@@ -3,19 +3,23 @@ kaplay({
     scale: 1
 })
 
+const mainColour = [67, 160, 71];
 const levelWidth = 3000;
+loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf")
 
-add([
-    text("Hello, Garden of Time!", {size: 24}),
-    pos(20, 20),
-    color(255, 255, 255)
-]);
+const starText = add([
+    text("Number of Stars Collected = 0/3", {size:25, font:"pixeled"}),
+    pos(width()-800, 50),
+    color(mainColour),
+    fixed()
+])
 
 const playerRadius = 16;
 const player = add([
     pos(32, height() - 116),
     circle(playerRadius),
-    color(255, 255, 255)
+    color(mainColour),
+    area()
 ]);
 
 const platforms = [
@@ -25,7 +29,7 @@ const platforms = [
         pos(0, height()-100),
         rect(levelWidth, 100),
         area(),
-        color(242, 23, 23),
+        color(mainColour),
 
         "platform",
         {
@@ -40,7 +44,7 @@ const platforms = [
         pos(width()/2, height()-150),
         rect(200, 50),
         area(),
-        color(132, 31, 143),
+        color(mainColour),
 
         "platform",
         {
@@ -48,9 +52,46 @@ const platforms = [
             myHeight: 50,
         }
     ])
-
-    // Collectibles
 ];
+
+const collectibles = [
+
+    add([
+        pos(300, height()-110),
+        circle(10),
+        color(mainColour),
+        area(),
+
+        "star"
+    ]),
+
+    add([
+        pos(600, height()-234),
+        circle(10),
+        color(mainColour),
+        area(),
+
+        "star"
+    ]),
+
+    add([
+        pos(1200, height()-110),
+        circle(10),
+        color(mainColour),
+        area(),
+
+        "star"
+    ])
+]
+let starsCollected = 0;
+let shownMessage = false;
+
+//Check collisions with stars
+player.onCollide("star", (star) => {
+    starsCollected += 1;
+    starText.text = `Number of Stars Collected = ${starsCollected}/3`
+    destroy(star);
+})
 
 const playerSpeed = 200;
 const playerGravity = 980;
@@ -65,6 +106,21 @@ onUpdate(() => {
     const camX = Math.min(Math.max(player.pos.x, width() / 2), levelWidth - width() / 2);
     const camY = height() / 2
     camPos(camX, camY)
+
+    // Do level finish message text
+    if (starsCollected == 3 && !shownMessage){
+        const endMessage = add([
+            text("Reach the end to go to the next level!",{size:15, font:"pixeled"}),
+            pos(0, 0),
+            fixed(),
+            color(mainColour),
+        ])
+
+        endMessage.pos.x = (width() - endMessage.width) / 2
+        endMessage.pos.y = 200;
+        shownMessage = true;
+    }
+
 
     // Check to see if player is not inside the screen
     player.pos.x = Math.min(Math.max(player.pos.x, 25), levelWidth - 25);
