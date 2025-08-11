@@ -1,18 +1,33 @@
+// CONFIGURE KAPLAY
 kaplay({
     background: [0, 0, 0],
     scale: 1
 })
 
+
+// CONFIGURING VARIABLES
 const mainColour = [67, 160, 71];
 const levelWidth = 3008;
-loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf")
+const scaleFactor = 4;
+const tileSize = 32;
+const playerSpeed = 200;
+const playerGravity = 980;
+const jumpAmount = 600;
 
-// All Sprites
+let starsCollected = 0;
+let shownMessage = false;
+
+let onAnyPlatform = false;
+const fixedDt = 1 / 60
+
+// LOADING ASSETS
+loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
 loadSprite("leaf", "assets/images/LeafSprite.png");
-loadSprite("ground", "assets/images/PlatformBSprite.png")
-loadSprite("topGround", "assets/images/PlatformTSprite.png")
+loadSprite("flower", "assets/images/FlowerSprite.png");
+loadSprite("ground", "assets/images/PlatformBSprite.png");
+loadSprite("topGround", "assets/images/PlatformTSprite.png");
 
-
+// ALL OF UI
 const starText = add([
     text("Number of Stars Collected = 0/3", {size:25, font:"pixeled"}),
     pos(width()-800, 50),
@@ -20,28 +35,11 @@ const starText = add([
     fixed()
 ])
 
-const spriteWidth = 16;
-const spriteHeight = 21;
-const scaleFactor = 3;
-
-const player = add([
-    sprite("leaf"),
-    pos(96, height() - 196),
-    area({ width: spriteWidth * scaleFactor, height: spriteHeight * scaleFactor }),
-    body(),
-    scale(scaleFactor),
-    anchor("topleft"),
-
-    "player"
-]);
-
 const platforms = [
 
-    // Any Level platforms
 ];
 
 // Bottom Tiles
-const tileSize = 32;
 for (let i = 0; i < 94; i++){
     for (let y = 0; y < 3; y++){
         // Bottom Ground Platform
@@ -90,8 +88,40 @@ const collectibles = [
 
 ]
 
-let starsCollected = 0;
-let shownMessage = false;
+// PLAYER SETUP
+let form = "leaf";
+let spriteSizes = {
+    "leaf": {"width": 16, "height": 21},
+    "flower": {"width": 19, "height": 28}
+}
+
+let spriteWidth = spriteSizes[form]["width"];
+let spriteHeight = spriteSizes[form]["height"];
+
+let playerWidth = spriteWidth * scaleFactor;
+let playerHeight = spriteHeight * scaleFactor;
+
+const player = add([
+    sprite("leaf"),
+    pos(96, height() - (128 + spriteSizes[form]["height"] * 4)),
+    area({ width: spriteWidth * scaleFactor, height: spriteHeight * scaleFactor }),
+    body(),
+    scale(scaleFactor),
+    anchor("topleft"),
+
+    "player"
+]);
+
+function switchForm() {
+    form = form === "leaf" ? "flower" : "leaf";
+    player.use(sprite(form));
+    const newSize = spriteSizes[form];
+    player.area.width = newSize.width * scaleFactor;
+    player.area.height = newSize.height * scaleFactor;
+    player.pos.y = height() - (128 + newSize.height * 4)
+    playerWidth = newSize.width * scaleFactor;
+    playerHeight = newSize.height * scaleFactor;
+}
 
 //Check collisions with stars
 player.onCollide("star", (star) => {
@@ -100,21 +130,15 @@ player.onCollide("star", (star) => {
     destroy(star);
 })
 
-const playerWidth = spriteWidth * scaleFactor;
-const playerHeight = spriteHeight * scaleFactor;
-const playerSpeed = 200;
-const playerGravity = 980;
-const jumpAmount = 600;
 player.velocity = vec2(0, 0);
-let onAnyPlatform = false;
-const fixedDt = 1 / 60
 
 onUpdate(() => {
 
     // Create player moving camera
-    const camX = Math.min(Math.max(player.pos.x, width() / 2), levelWidth - width() / 2);
-    const camY = height() / 2
+    const camX = Math.min(Math.max(player.pos.x, width() / (2*2)), levelWidth - 2);
+    const camY = height() / 1.5
     camPos(camX, camY)
+    camScale(2)
 
     // Do level finish message text
     if (starsCollected == 3 && !shownMessage){
@@ -181,6 +205,8 @@ onUpdate(() => {
     }
 
 })
+
+//All Key Presses
 onKeyDown("a", () => {
     player.velocity.x = -playerSpeed;
 })
@@ -201,4 +227,8 @@ onKeyPress("w" , () => {
     if (onAnyPlatform) {
         player.velocity.y = -jumpAmount;
     }
+})
+
+onKeyPress("e", () => {
+    switchForm();
 })
