@@ -31,7 +31,17 @@ let allowMovement = true;
 
 // LOADING ASSETS
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
-loadSprite("leaf", "assets/images/LeafSprite.png");
+loadSprite("leaf", "assets/images/LeafSprite.png", {
+    sliceX: 4,
+    anims: {
+        idle: {
+            from: 0,
+            to: 3,
+            speed: 6,
+            loop: true
+        }
+    }
+});
 loadSprite("flower", "assets/images/FlowerSprite.png");
 loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
@@ -155,6 +165,7 @@ const player = add([
 
     "player"
 ]);
+player.play("idle")
 
 function switchForm() {
     form = form === "leaf" ? "flower" : "leaf";
@@ -247,6 +258,10 @@ onUpdate(() => {
             player.velocity.x = 0;
         }
 
+    }
+
+    if (!player.velocity.x == 0 && onAnyPlatform) {
+        player.play("idle")
     }
 
     if (removing) {
