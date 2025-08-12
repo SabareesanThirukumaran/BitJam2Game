@@ -8,11 +8,12 @@ kaplay({
 // CONFIGURING VARIABLES
 const mainColour = [67, 160, 71];
 const levelWidth = 3008;
-const scaleFactor = 4;
+let scaleFactor = 4;
 const tileSize = 32;
-const playerSpeed = 200;
-const playerGravity = 980;
+let playerSpeed = 200;
+let playerGravity = 980;
 const jumpAmount = 600;
+let playerState = "idle";
 
 let starsCollected = 0;
 let shownMessage = false;
@@ -42,6 +43,7 @@ loadSprite("leaf", "assets/images/LeafSprite.png", {
         }
     }
 });
+loadSprite("movingLeaf", "assets/images/LeafMoveSprite.png");
 loadSprite("flower", "assets/images/FlowerSprite.png");
 loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
@@ -90,8 +92,6 @@ function recreateOverlay(){
         }
     }
 }
-
-
 
 // Bottom Tiles
 for (let i = 0; i < 94; i++){
@@ -165,17 +165,65 @@ const player = add([
 
     "player"
 ]);
+
 player.play("idle")
 
 function switchForm() {
-    form = form === "leaf" ? "flower" : "leaf";
-    player.use(sprite(form));
-    const newSize = spriteSizes[form];
-    player.area.width = newSize.width * scaleFactor;
-    player.area.height = newSize.height * scaleFactor;
-    player.pos.y = height() - (128 + newSize.height * 4)
-    playerWidth = newSize.width * scaleFactor;
-    playerHeight = newSize.height * scaleFactor;
+    if (form == "leaf"){
+        form = "flower";
+        player.use(sprite(form));
+        let newSize = spriteSizes[form];
+        player.area.width = newSize.width * scaleFactor;
+        player.area.height = newSize.height * scaleFactor;
+        player.pos.y = height() - (128 + newSize.height * 4)
+        playerWidth = newSize.width * scaleFactor;
+        playerHeight = newSize.height * scaleFactor;
+
+        // Zoom out camera to entire level
+        camX = levelWidth / 2
+        camY = height() / 4.5
+        let zoom = width() / levelWidth 
+        camPos(camX, camY)
+        camScale(zoom)
+
+        // Disable player movement
+        playerGravity = 0;
+        playerSpeed = 0;
+
+        // Edit Player Position
+        previousPosX = player.pos.x;
+        previousPosY = player.pos.y;
+
+        const userArea = add([
+            rect(50, 100),
+            color(255, 255, 255),
+            pos(previousPosX, previousPosY+25)
+        ])
+        player.pos.x = levelWidth - 500;
+        player.pos.y = height() - 1200;
+        player.use(scale(15));
+
+        // Arrow following player mouse
+    }
+    else if (form == "flower"){
+        form = "leaf";
+        player.use(sprite(form));
+        let newSize = spriteSizes[form];
+        player.area.width = newSize.width * scaleFactor;
+        player.area.height = newSize.height * scaleFactor;
+        player.pos.y = height() - (128 + newSize.height * 4)
+        playerWidth = newSize.width * scaleFactor;
+        playerHeight = newSize.height * scaleFactor;
+
+        playerGravity = 980;
+        playerSpeed = 200;
+
+        player.pos.x = previousPosX;
+        player.pos.y = previousPosY;
+        player.use(scale(scaleFactor))
+    }
+
+
 }
 
 //Check collisions with stars
@@ -191,10 +239,12 @@ onUpdate(() => {
 
     // Create player moving camera
 
-    const camX = Math.min(Math.max(player.pos.x, visibleWidth / 2), levelWidth - visibleWidth /2);
-    const camY = height() / 1.5
-    camPos(camX, camY)
-    camScale(2)
+    if (form == "leaf"){
+        let camX = Math.min(Math.max(player.pos.x, visibleWidth / 2), levelWidth - visibleWidth /2);
+        let camY = height() / 1.5
+        camPos(camX, camY)
+        camScale(2)
+    }
 
     // Do level finish message text
     if (starsCollected == 3 && !shownMessage){
@@ -260,9 +310,18 @@ onUpdate(() => {
 
     }
 
-    if (!player.velocity.x == 0 && onAnyPlatform) {
-        player.play("idle")
-    }
+    if (form == "leaf"){
+        if (player.velocity.x === 0 && onAnyPlatform && playerState !== "idle") {
+            player.use(sprite("leaf"));
+            player.play("idle");
+            playerState = "idle";
+        } 
+
+        if (!(player.velocity.x === 0 && onAnyPlatform) && playerState !== "moving"){
+            player.use(sprite("movingLeaf"));
+            playerState = "moving"
+        }
+    } 
 
     if (removing) {
         allowMovement = false;
