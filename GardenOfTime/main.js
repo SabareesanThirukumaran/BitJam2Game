@@ -2,7 +2,7 @@
 kaplay({
     background: [0, 0, 0],
     scale: 1
-})
+});
 
 
 // CONFIGURING VARIABLES
@@ -19,6 +19,15 @@ let shownMessage = false;
 
 let onAnyPlatform = false;
 const fixedDt = 1 / 60
+const visibleWidth = width() / 2;
+
+let cells = [];
+let offsets = [];
+let removing = false;
+let waveY = 0;
+const cellSize = 16;
+const waveSpeed = 2000;
+let allowMovement = true;
 
 // LOADING ASSETS
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
@@ -38,6 +47,41 @@ const starText = add([
 const platforms = [
 
 ];
+
+function recreateOverlay(){
+
+    for (let c of cells){
+        if (c && c.exists) {destroy(c)};
+    }
+    cells = [];
+    offsets = [];
+
+    const cols = Math.ceil(width() / cellSize);
+    const rows = Math.ceil(height() / cellSize);
+
+    for (let col = 0; col < cols; col++){
+
+        offsets[col] = Math.round(rand(-2, 2)) * cellSize;
+
+        const x = col * cellSize;
+        for (let row = 0; row < rows; row++){
+            const y = row * cellSize
+            const cell = add([
+                pos(x, y),
+                rect(cellSize, cellSize),
+                color(mainColour),
+                fixed(),
+                z(999),
+                "transitionCell",
+                {columnIndex: col, rowY: y}
+            ])
+
+            cells.push(cell)
+        }
+    }
+}
+
+
 
 // Bottom Tiles
 for (let i = 0; i < 94; i++){
@@ -135,7 +179,8 @@ player.velocity = vec2(0, 0);
 onUpdate(() => {
 
     // Create player moving camera
-    const camX = Math.min(Math.max(player.pos.x, width() / (2*2)), levelWidth - 2);
+
+    const camX = Math.min(Math.max(player.pos.x, visibleWidth / 2), levelWidth - visibleWidth /2);
     const camY = height() / 1.5
     camPos(camX, camY)
     camScale(2)
@@ -204,31 +249,57 @@ onUpdate(() => {
 
     }
 
+    if (removing) {
+        allowMovement = false;
+        for (let i = cells.length - 1; i >= 0; i--) {
+            const cell = cells[i];
+            const offset = offsets[cell.columnIndex] || 0;
+            if (cell.rowY <= waveY - offset) {
+                destroy(cell);
+                cells.splice(i, 1);
+            }
+        }
+
+        waveY += waveSpeed * fixedDt;
+
+        if (cells.length === 0) {
+            removing = false;
+            allowMovement = true;
+        }
+    }
+
 })
 
 //All Key Presses
 onKeyDown("a", () => {
-    player.velocity.x = -playerSpeed;
+    if (allowMovement) {player.velocity.x = -playerSpeed;}
 })
 
 onKeyDown("d", () => {
-    player.velocity.x = playerSpeed;
+    if (allowMovement) {player.velocity.x = playerSpeed;}
 })
 
 onKeyRelease("a", () => {
-    if (player.velocity.x < 0) player.velocity.x = 0;
+    if (allowMovement) {if (player.velocity.x < 0) player.velocity.x = 0;}
 })
 
 onKeyRelease("d", () => {
-    if (player.velocity.x > 0) player.velocity.x = 0;
+    if (allowMovement) {if (player.velocity.x > 0) player.velocity.x = 0;}
 })
 
 onKeyPress("w" , () => {
-    if (onAnyPlatform) {
-        player.velocity.y = -jumpAmount;
+    if (allowMovement) {
+        if (onAnyPlatform) {
+            player.velocity.y = -jumpAmount;
+        }
     }
 })
 
 onKeyPress("e", () => {
+    if (removing){return;}
+
+    recreateOverlay()
+    removing = true;
+    waveY = 0;
     switchForm();
 })
