@@ -4,7 +4,6 @@ kaplay({
     scale: 1
 });
 
-
 // CONFIGURING VARIABLES
 const mainColour = [67, 160, 71];
 const levelWidth = 3008;
@@ -30,6 +29,8 @@ const cellSize = 16;
 const waveSpeed = 2000;
 let allowMovement = true;
 
+const arrowOffsetY = 150;
+
 // LOADING ASSETS
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
 loadSprite("leaf", "assets/images/LeafSprite.png", {
@@ -44,6 +45,7 @@ loadSprite("leaf", "assets/images/LeafSprite.png", {
     }
 });
 loadSprite("movingLeaf", "assets/images/LeafMoveSprite.png");
+loadSprite("jumpPad", "assets/images/PadSprite.png");
 loadSprite("flower", "assets/images/FlowerSprite.png");
 loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
@@ -56,9 +58,7 @@ const starText = add([
     fixed()
 ])
 
-const platforms = [
-
-];
+const platforms = [];
 
 function recreateOverlay(){
 
@@ -95,7 +95,7 @@ function recreateOverlay(){
 
 // Bottom Tiles
 for (let i = 0; i < 94; i++){
-    for (let y = 0; y < 3; y++){
+    for (let y = 0; y < 5; y++){
         // Bottom Ground Platform
         const groundTile = add([
             sprite("ground"),
@@ -108,7 +108,7 @@ for (let i = 0; i < 94; i++){
 for (let i = 0; i < 94; i++){
     const topTile = add([
         sprite("topGround"),
-        pos(32*i, height()-128),
+        pos(32*i, height()-192),
         area({ collisionIgnore: ["player"]}),
         z(1)
     ])
@@ -118,13 +118,13 @@ for (let i = 0; i < 94; i++){
 
 platforms.push(
     add([
-        pos(0, height()-128),
-        rect(levelWidth, 32),
+        pos(0, height()-192),
+        rect(levelWidth, 10),
         area(),
         "platform",
         {
             myWidth: levelWidth,
-            myHeight: 32,
+            myHeight: 10,
         }
     ])
 )
@@ -157,7 +157,7 @@ let playerHeight = spriteHeight * scaleFactor;
 
 const player = add([
     sprite("leaf"),
-    pos(96, height() - (128 + spriteSizes[form]["height"] * 4)),
+    pos(96, height() - (192 + spriteSizes[form]["height"] * 4)),
     area({ width: spriteWidth * scaleFactor, height: spriteHeight * scaleFactor }),
     body(),
     scale(scaleFactor),
@@ -165,8 +165,70 @@ const player = add([
 
     "player"
 ]);
-
 player.play("idle")
+
+let arrow;
+
+let jumpPads = [];
+let previewPad = null;
+let placingPad = false;
+
+function overlapping(a, b, tolerance = 10){
+    const aLeft = a.pos.x;
+    const aRight = a.pos.x + (a.Padwidth || a.width);
+    const aBottom = a.pos.y + (a.Padheight || a.height);
+
+    const bLeft = b.pos.x;
+    const bRight = b.pos.x + (b.myWidth || b.width);
+    const bTop = b.pos.y;
+
+    const horiPlatLap = aRight > bLeft && aLeft < bRight
+    const vertiPlatLap = Math.abs(aBottom - bTop) <= tolerance
+    return horiPlatLap && vertiPlatLap;
+}
+
+function playerOnPad(player, pad, tolerance = 3) {
+    const pLeft   = player.pos.x;
+    const pRight  = pLeft + playerWidth;
+    const pTop    = player.pos.y;
+    const pBottom = pTop + playerHeight;
+
+    const padLeft   = pad.pos.x;
+    const padRight  = padLeft + (pad.Padwidth || pad.width);
+    const padTop    = pad.pos.y;
+
+    const horizontal = pRight > padLeft && pLeft < padRight;
+    const comingDown = player.velocity.y >= 0;
+
+    const alignedOnTop = Math.abs(pBottom - padTop) <= tolerance && pTop < padTop;
+    return horizontal && alignedOnTop && comingDown;
+}
+
+function startPlacingJumpPad(){
+    placingPad = true;
+    previewPad = add([
+        sprite("jumpPad"),
+        pos(vec2(0, 0)),
+        anchor("topleft"),
+        z(6),
+        "jumpPadPreview",
+        {Padwidth: 100, Padheight: 15}
+    ])
+}
+
+function placeJumpPad(position){
+    const pad  = add([
+        sprite("jumpPad"),
+        pos(position),
+        anchor("topleft"),
+        area(),
+        body({isStatic: true}),
+        z(6),
+        "jumpPad",
+        {Padwidth: 100, Padheight: 15}
+    ])
+    jumpPads.push(pad);
+}
 
 function switchForm() {
     if (form == "leaf"){
@@ -175,7 +237,7 @@ function switchForm() {
         let newSize = spriteSizes[form];
         player.area.width = newSize.width * scaleFactor;
         player.area.height = newSize.height * scaleFactor;
-        player.pos.y = height() - (128 + newSize.height * 4)
+        player.pos.y = height() - (192 + newSize.height * 4)
         playerWidth = newSize.width * scaleFactor;
         playerHeight = newSize.height * scaleFactor;
 
@@ -197,13 +259,24 @@ function switchForm() {
         const userArea = add([
             rect(50, 100),
             color(255, 255, 255),
-            pos(previousPosX, previousPosY+25)
+            pos(previousPosX, previousPosY+25),
+            "userArea"
         ])
+
         player.pos.x = levelWidth - 500;
         player.pos.y = height() - 1200;
         player.use(scale(15));
 
-        // Arrow following player mouse
+        arrow = add([
+            rect(25, 25),
+            color(mainColour),
+            anchor("left"), // so it grows rightwards from player position
+            z(5),
+            "arrow"
+        ]);
+
+        startPlacingJumpPad();
+
     }
     else if (form == "flower"){
         form = "leaf";
@@ -211,16 +284,22 @@ function switchForm() {
         let newSize = spriteSizes[form];
         player.area.width = newSize.width * scaleFactor;
         player.area.height = newSize.height * scaleFactor;
-        player.pos.y = height() - (128 + newSize.height * 4)
+        player.pos.y = height() - (192 + newSize.height * 4);
         playerWidth = newSize.width * scaleFactor;
         playerHeight = newSize.height * scaleFactor;
+
+        destroyAll("jumpPadPreview");
+        destroyAll("arrow");
+        destroyAll("userArea");
 
         playerGravity = 980;
         playerSpeed = 200;
 
         player.pos.x = previousPosX;
         player.pos.y = previousPosY;
-        player.use(scale(scaleFactor))
+        player.use(scale(scaleFactor));
+
+        placingPad = false;
     }
 
 
@@ -238,12 +317,43 @@ player.velocity = vec2(0, 0);
 onUpdate(() => {
 
     // Create player moving camera
-
     if (form == "leaf"){
         let camX = Math.min(Math.max(player.pos.x, visibleWidth / 2), levelWidth - visibleWidth /2);
-        let camY = height() / 1.5
+        let camY = height() / 1.7
         camPos(camX, camY)
         camScale(2)
+    }
+
+    if (form == "flower" && placingPad && previewPad) {
+        const playerCenter = vec2(player.pos.x, player.pos.y + arrowOffsetY);
+        const mouseWorld = toWorld(mousePos());
+        const dir = mouseWorld.sub(playerCenter);
+        const dist = dir.len();
+        const tipPosition = playerCenter.add(dir);
+        const offsetPos = tipPosition.add(vec2(Math.cos(arrow.angle), Math.sin(arrow.angle)).scale(15))
+        
+        arrow.angle = dir.angle();
+        arrow.width = dist;
+        arrow.pos = playerCenter;
+
+        previewPad.pos = offsetPos;
+        let colliding = false;
+
+        for (const platform of platforms) {
+            if (overlapping(previewPad, platform)){
+                colliding = true;
+                break;
+            }
+        }
+        previewPad.use(outline(10, colliding ? [0, 255, 0] : [255, 0, 0]))
+
+    }
+
+    for (const pad of jumpPads){
+        if (playerOnPad(player, pad)){
+            player.pos.y = pad.pos.y - playerHeight;
+            player.velocity.y = -jumpAmount * 1.5;
+        }
     }
 
     // Do level finish message text
@@ -263,9 +373,7 @@ onUpdate(() => {
 
     // Check to see if player is not inside the screen
     player.pos.x = Math.min(Math.max(player.pos.x, 10), levelWidth - 40);
-
     onAnyPlatform = false;
-
     player.velocity.y += playerGravity * fixedDt;
     player.pos.x += player.velocity.x * fixedDt;
     player.pos.y += player.velocity.y * fixedDt;
@@ -345,35 +453,35 @@ onUpdate(() => {
 })
 
 //All Key Presses
-onKeyDown("a", () => {
-    if (allowMovement) {player.velocity.x = -playerSpeed;}
-})
-
-onKeyDown("d", () => {
-    if (allowMovement) {player.velocity.x = playerSpeed;}
-})
-
-onKeyRelease("a", () => {
-    if (allowMovement) {if (player.velocity.x < 0) player.velocity.x = 0;}
-})
-
-onKeyRelease("d", () => {
-    if (allowMovement) {if (player.velocity.x > 0) player.velocity.x = 0;}
-})
-
-onKeyPress("w" , () => {
-    if (allowMovement) {
-        if (onAnyPlatform) {
-            player.velocity.y = -jumpAmount;
-        }
-    }
-})
+onKeyDown("a", () => { if (allowMovement) {player.velocity.x = -playerSpeed;}})
+onKeyDown("d", () => { if (allowMovement) {player.velocity.x = playerSpeed;} })
+onKeyRelease("a", () => { if (allowMovement) {if (player.velocity.x < 0) player.velocity.x = 0;}})
+onKeyRelease("d", () => { if (allowMovement) {if (player.velocity.x > 0) player.velocity.x = 0;} })
+onKeyPress("w" , () => { if (allowMovement) { if (onAnyPlatform) { player.velocity.y = -jumpAmount; }}})
 
 onKeyPress("e", () => {
     if (removing){return;}
-
     recreateOverlay()
     removing = true;
     waveY = 0;
     switchForm();
 })
+
+onKeyPress("space", () => {
+    if (form === "flower" && placingPad && previewPad) {
+        let colliding = false;
+        for (const platform of platforms) {
+            if (overlapping(previewPad, platform)) {
+                colliding = true;
+                break;
+            }
+        }
+        if (colliding) {
+            placeJumpPad(previewPad.pos.clone());
+            destroy(previewPad);
+            previewPad = null;
+            placingPad = false;
+            switchForm();
+        }
+    }
+});
