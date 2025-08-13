@@ -30,6 +30,19 @@ const waveSpeed = 2000;
 let allowMovement = true;
 
 const arrowOffsetY = 150;
+let arrow;
+
+let jumpPads = [];
+let allGrass = [];
+let allSpike = [];
+let allWeeds = [];
+let previewPad = null;
+let placingPad = false;
+
+let displayedStealth = 0;
+let actualStealth  = 0;
+let displayedHealth = 1;
+let actualHealth = 1;
 
 // LOADING ASSETS
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
@@ -46,6 +59,9 @@ loadSprite("leaf", "assets/images/LeafSprite.png", {
 });
 loadSprite("movingLeaf", "assets/images/LeafMoveSprite.png");
 loadSprite("jumpPad", "assets/images/PadSprite.png");
+loadSprite("grass", "assets/images/GrassSprite.png");
+loadSprite("spike", "assets/images/SpikeSprite.png");
+loadSprite("weed", "assets/images/WeedsSprite.png");
 loadSprite("flower", "assets/images/FlowerSprite.png");
 loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
@@ -142,6 +158,56 @@ const collectibles = [
 
 ]
 
+function createGrass(position) {
+    const grassBlock = add([
+        sprite("grass"),
+        pos(position),
+        scale(4),
+        area(),
+        z(10),
+        "grass"
+    ])
+    allGrass.push(grassBlock);
+}
+
+function createSpike(position) {
+    const spikeBlock = add([
+        sprite("spike"),
+        pos(position),
+        area(),
+        scale(3),
+        "spike"
+    ])
+    allSpike.push(spikeBlock);
+}
+
+function createWeed(position) {
+    const weedBlock = add([
+        sprite("weed"),
+        pos(position),
+        area(),
+        scale(3),
+        "weed"
+    ])
+    allWeeds.push(weedBlock);
+}
+
+createSpike(vec2(150, height() - 192 - 96))
+createGrass(vec2(50, height() - 192 - 64))
+createWeed(vec2(300, height() - 192 - 51))
+
+// STEALTH BAR
+const stealthBarText = add([text("Stealth :", {size:25, font:"pixeled"}), pos(50, 70), color(mainColour), fixed()])
+const stealthBarBg = add([rect(420, 60), pos(300,50), color(mainColour), fixed(), z(100)]);
+const stealthBar = add([rect(400, 50), pos(310, 55), color(0, 0, 0), fixed(), z(101)]);
+const stealthBarInner = add([rect(400, 50), pos(310, 55), color(mainColour), outline(4), fixed(), z(101)])
+
+// HEALTH BAR
+const healthBarText = add([text("Health :", {size:25, font:"pixeled"}), pos(50, 140), color(mainColour), fixed()])
+const healthBarBg = add([rect(420, 60), pos(300,120), color(mainColour), fixed(), z(100)]);
+const healthBar = add([rect(400, 50), pos(310, 125), color(0, 0, 0), fixed(), z(101)]);
+const healthBarInner = add([rect(400, 50), pos(310, 125), color(mainColour), outline(4), fixed(), z(101)])
+
 // PLAYER SETUP
 let form = "leaf";
 let spriteSizes = {
@@ -166,12 +232,7 @@ const player = add([
     "player"
 ]);
 player.play("idle")
-
-let arrow;
-
-let jumpPads = [];
-let previewPad = null;
-let placingPad = false;
+player.velocity = vec2(0, 0);
 
 function overlapping(a, b, tolerance = 10){
     const aLeft = a.pos.x;
@@ -305,14 +366,17 @@ function switchForm() {
 
 }
 
-//Check collisions with stars
 player.onCollide("star", (star) => {
     starsCollected += 1;
     starText.text = `Number of Stars Collected = ${starsCollected}/3`
     destroy(star);
 })
 
-player.velocity = vec2(0, 0);
+player.onCollide("grass", () => {actualStealth = 1;})
+player.onCollide("weed", () => {actualStealth = 0.4;})
+player.onCollideEnd("grass", () => {actualStealth = 0;})
+player.onCollideEnd("weed", () => {actualStealth = 0;})
+player.onCollide("spike", () => {actualHealth -= (1/3);})
 
 onUpdate(() => {
 
@@ -369,7 +433,6 @@ onUpdate(() => {
         endMessage.pos.y = 200;
         shownMessage = true;
     }
-
 
     // Check to see if player is not inside the screen
     player.pos.x = Math.min(Math.max(player.pos.x, 10), levelWidth - 40);
@@ -450,6 +513,12 @@ onUpdate(() => {
         }
     }
 
+    const barSpeed = 3;
+    displayedStealth += (actualStealth - displayedStealth) * barSpeed * fixedDt;
+    displayedHealth += (actualHealth - displayedHealth) * barSpeed * fixedDt;
+    stealthBarInner.width = 400 * displayedStealth;
+    healthBarInner.width = 400 * displayedHealth;
+
 })
 
 //All Key Presses
@@ -458,7 +527,6 @@ onKeyDown("d", () => { if (allowMovement) {player.velocity.x = playerSpeed;} })
 onKeyRelease("a", () => { if (allowMovement) {if (player.velocity.x < 0) player.velocity.x = 0;}})
 onKeyRelease("d", () => { if (allowMovement) {if (player.velocity.x > 0) player.velocity.x = 0;} })
 onKeyPress("w" , () => { if (allowMovement) { if (onAnyPlatform) { player.velocity.y = -jumpAmount; }}})
-
 onKeyPress("e", () => {
     if (removing){return;}
     recreateOverlay()
@@ -466,7 +534,6 @@ onKeyPress("e", () => {
     waveY = 0;
     switchForm();
 })
-
 onKeyPress("space", () => {
     if (form === "flower" && placingPad && previewPad) {
         let colliding = false;
