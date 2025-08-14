@@ -55,10 +55,21 @@ loadSprite("leaf", "assets/images/LeafSprite.png", {
             from: 0,
             to: 3,
             speed: 6,
-            loop: true
+            loop: true 
         }
     }
 });
+loadSprite("orbAnim", "assets/images/Animation.png", {
+    sliceX: 12,
+    anims: {
+        fly:{
+            from: 0,
+            to: 11,
+            speed: 4,
+            loop: false
+        }
+    }
+})
 loadSprite("movingLeaf", "assets/images/LeafMoveSprite.png");
 loadSprite("jumpPad", "assets/images/PadSprite.png");
 loadSprite("grass", "assets/images/GrassSprite.png");
@@ -78,9 +89,10 @@ const starText = add([
 
 function createText(textInfo, textSize, positionX, positionY){
     add([
-        text(`${textInfo}`, {size:textSize, font:"pixeled"}),
-        pos(positionX*32, positionY*32),
-        color(mainColour)
+        text(`${textInfo}`, {size:textSize, font:"pixeled", width:500}),
+        pos(positionX, positionY),
+        color(mainColour),
+        z(10)
     ])
 }
 
@@ -312,6 +324,8 @@ let spriteHeight = spriteSizes[form]["height"];
 let playerWidth = spriteWidth * scaleFactor;
 let playerHeight = spriteHeight * scaleFactor;
 
+let returnAnchor = null;
+
 const player = add([
     sprite("leaf"),
     pos(32, height() - (192 + spriteSizes[form]["height"] * 4)),
@@ -382,7 +396,64 @@ function placeJumpPad(position){
     jumpPads.push(pad);
 }
 
-let returnAnchor = null;
+function flashWhite(duration = 0.1) {
+	add([
+		rect(width(), height()),
+		color(255, 255, 255),
+		opacity(1), // Needed for lifespan fade
+		fixed(),
+		z(999),
+		lifespan(duration, { fade: 0.1 })
+	]);
+}
+
+function launchOrbArc(startPos, targetPos) {
+    flashWhite();
+
+    const orb = add([
+        sprite("orbAnim"),
+        pos(startPos),
+        z(50)
+    ]);
+    orb.play("fly")
+
+    const travelTime = 2.5;
+    let elapsed = 0;
+    const peakHeight = -80;
+
+    camScale(1.5);
+    camPos(orb.pos);
+
+    orb.onUpdate(() => {
+        elapsed += dt();
+        let t = Math.min(elapsed / travelTime, 1);
+
+        const newPos = vec2(
+            lerp(startPos.x, targetPos.x, t),
+            lerp(startPos.y, targetPos.y, t)
+        );
+
+        const arcOffset = peakHeight * Math.sin(Math.PI * t);
+        orb.pos = vec2(newPos.x, newPos.y + arcOffset);
+
+        camPos(orb.pos);
+
+        if (t >= 1) {
+            endOrbSequence(orb, targetPos);
+        }
+    });
+}
+
+function endOrbSequence(orb, finalPos) {
+    flashWhite();
+    destroy(orb);
+
+    camScale(1);
+    camPos(player.pos);
+
+    placeJumpPad(finalPos);
+    switchForm("leaf");
+}
 
 function getSupportingPlatform(tol = 6) {
     const pLeft   = player.pos.x;
@@ -432,10 +503,8 @@ function restoreFromReturnAnchor() {
 
 function switchForm() {
     if (form === "leaf") {
-        // SAVE FIRST (on-platform info + exact XY)
         saveReturnAnchor();
 
-        // Switch to flower (do NOT touch pos.y baseline)
         form = "flower";
         player.use(sprite(form));
 
@@ -445,19 +514,16 @@ function switchForm() {
         playerWidth  = newSize.width  * scaleFactor;
         playerHeight = newSize.height * scaleFactor;
 
-        // Freeze physics completely in flower mode
         player.velocity = vec2(0, 0);
         playerGravity = 0;
         playerSpeed = 0;
 
-        // Camera zoom-out + teleport to placement view (your existing values)
         let camX = levelWidth / 2;
         let camY = height() / 4.5;
         let zoom = width() / levelWidth;
         camPos(camX, camY);
         camScale(zoom);
 
-        // (Your UI)
         const userArea = add([
             rect(50, 100),
             color(255, 255, 255),
@@ -487,24 +553,17 @@ function switchForm() {
         destroyAll("arrow");
         destroyAll("userArea");
 
-        // Re-enable physics & clear any residual motion
         playerGravity = 980;
         playerSpeed = 200;
         player.velocity = vec2(0, 0);
 
-        // RESTORE to the saved anchor (top of platform or free space)
         restoreFromReturnAnchor();
 
         placingPad = false;
     }
 }
 
-
-player.onCollide("star", (star) => {
-    starsCollected += 1;
-    starText.text = `Number of Stars Collected = ${starsCollected}/3`
-    destroy(star);
-})
+player.onCollide("star", (star) => {starsCollected += 1;starText.text = `Number of Stars Collected = ${starsCollected}/3`; destroy(star);})
 player.onCollide("grass", () => {grassOverlapCount++; actualStealth = 1;})
 player.onCollide("weed", () => {weedOverlapCount++; actualStealth = 0.4; playerSpeed=100;})
 player.onCollideEnd("grass", () => {grassOverlapCount = Math.max(0, grassOverlapCount - 1); if(grassOverlapCount === 0) {actualStealth = 0;}})
@@ -513,7 +572,6 @@ player.onCollide("spike", () => {actualHealth -= (1/3);})
 
 onUpdate(() => {
 
-    // Create player moving camera
     if (form == "leaf"){
         let camX = Math.min(
             Math.max(player.pos.x, visibleWidth / 2),
@@ -568,7 +626,7 @@ onUpdate(() => {
             player.velocity.y = -jumpAmount * 1.5;
         }
     }
-    // Do level finish message text
+
     if (starsCollected == 3 && !shownMessage){
         const endMessage = add([
             text("Reach the end to go to the next level!",{size:15, font:"pixeled"}),
@@ -705,18 +763,30 @@ onUpdate(() => {
 
 })
 
-//All Key Presses
 onKeyDown("a", () => { if (allowMovement) {player.velocity.x = -playerSpeed;}})
 onKeyDown("d", () => { if (allowMovement) {player.velocity.x = playerSpeed;} })
 onKeyRelease("a", () => { if (allowMovement) {if (player.velocity.x < 0) player.velocity.x = 0;}})
 onKeyRelease("d", () => { if (allowMovement) {if (player.velocity.x > 0) player.velocity.x = 0;} })
 onKeyPress("w" , () => { if (allowMovement) { if (onAnyPlatform) { player.velocity.y = -jumpAmount; }}})
 onKeyPress("e", () => {
-    if (removing){return;}
-    recreateOverlay()
-    removing = true;
-    waveY = 0;
-    switchForm();
+    if (starsCollected == 3){
+        starsCollected = 0;
+        if (removing){return;}
+        recreateOverlay()
+        removing = true;
+        waveY = 0;
+        switchForm();
+        starText.text = "Number of Stars Collected = 0/3"
+    }
+    else {
+        const notEnough = add([
+            text("Not enough stars collected !", {size: 8, font: "pixeled"}),
+            color(mainColour),
+            pos(player.pos.x, player.pos.y-100),
+            "notEnough"
+        ])
+        setTimeout(() => {destroyAll("notEnough")}, 1000)
+    }
 })
 onKeyPress("space", () => {
     if (form === "flower" && placingPad && previewPad) {
@@ -728,18 +798,17 @@ onKeyPress("space", () => {
             }
         }
         if (colliding) {
-            placeJumpPad(previewPad.pos.clone());
+            const finalPadPos = previewPad.pos.clone();
             destroy(previewPad);
             previewPad = null;
             placingPad = false;
-            switchForm();
+            launchOrbArc(player.pos, finalPadPos);
         }
     }
 });
 
 //LOADING LEVELS
 import tutorial from "./levels/tutorial.js"
-
 function loadLevel(levelData) {
     destroyAll("createdPlatform")
     destroyAll("star")
@@ -756,5 +825,4 @@ function loadLevel(levelData) {
     }
     for (const t of levelData.texts) {createText(t.textInfo, t.textSize, t.posX, t.posY)}
 }
-
 loadLevel(tutorial)

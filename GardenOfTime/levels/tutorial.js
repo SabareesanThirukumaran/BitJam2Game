@@ -3,6 +3,7 @@ export default {
         {posX: 4, BlockW:1, BlockH:1},
         {posX:5, BlockW:10, BlockH:2},
         {posX:7, BlockW:8, BlockH:3},
+        {posX:14, BlockW:1, BlockH:6},
         {posX:15, BlockW:2, BlockH:10},
         {posX:25, BlockW:10, BlockH:1},
         {posX:26, BlockW:9, BlockH:2},
@@ -11,7 +12,7 @@ export default {
         {posX:33, BlockW:1, BlockH:8},
         {posX:35, BlockW:2, BlockH:10},
         {posX:36, BlockW:17, BlockH:5},
-        {posX:54, BlockW:1, BlockH:8, posY:8},
+        {posX:54, BlockW:1, BlockH:9, posY:9},
         {posX:56, BlockW:1, BlockH:10, posY:10},
         {posX:58, BlockW:1, BlockH:12, posY:12},
         {posX:60, BlockW:1, BlockH:13, posY:13},
@@ -46,7 +47,6 @@ export default {
         {type:"spike", posX:82, posY:1},
         {type:"spike", posX:84, posY:1},
 
-
         {type:"grass", posX:37, posY:6},
         {type:"grass", posX:39, posY:6},
         {type:"grass", posX:41, posY:6},
@@ -78,6 +78,12 @@ export default {
     ],
 
     texts: [
-        {textInfo: "Controls: W A S D / Left Joystick, B, A, X", textSize: 10, posX:5, posY:7}
+        {textInfo: "Collect 3 Stars to activate Flower mode.\n Press E to activate flower mode.\nThen press SPACE to place a jump platform \n(only when touching a boundary)", textSize: 10, posX:575, posY:500},
+        {textInfo: "Beware of Spikes. (You only have 3 lives).", textSize: 9, posX:25, posY: 575},
+        {textInfo: "When the timer runs out, its casualty time. \nHide in grass to increase your stealth to prevent getting damaged.", textSize: 10, posX: 1200, posY: 500},
+        {textInfo: "Activate flower mode here.", textSize: 10, posX: 1900, posY:450},
+        {textInfo: "Theres weed below. Weed Slows You down and only partially increases your stealth.", textSize: 10, posX:1750, posY: 600},
+        {textInfo: "Enjoy the game!", textSize: 15, posX: 2650, posY: 550}
+
     ]
 }
