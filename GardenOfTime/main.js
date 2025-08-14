@@ -13,6 +13,8 @@ let playerSpeed = 200;
 let playerGravity = 980;
 const jumpAmount = 600;
 let playerState = "idle";
+let previousPosX = 0;
+let previousPosY  = 0;
 
 let starsCollected = 0;
 let shownMessage = false;
@@ -33,9 +35,6 @@ const arrowOffsetY = 150;
 let arrow;
 
 let jumpPads = [];
-let allGrass = [];
-let allSpike = [];
-let allWeeds = [];
 const collectibles = []
 let previewPad = null;
 let placingPad = false;
@@ -44,6 +43,8 @@ let displayedStealth = 0;
 let actualStealth  = 0;
 let displayedHealth = 1;
 let actualHealth = 1;
+let grassOverlapCount = 0;
+let weedOverlapCount = 0;
 
 // LOADING ASSETS
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
@@ -74,6 +75,14 @@ const starText = add([
     color(mainColour),
     fixed()
 ])
+
+function createText(textInfo, textSize, positionX, positionY){
+    add([
+        text(`${textInfo}`, {size:textSize, font:"pixeled"}),
+        pos(positionX*32, positionY*32),
+        color(mainColour)
+    ])
+}
 
 const platforms = [];
 
@@ -144,42 +153,66 @@ platforms.push(
     ])
 )
 
-function createPlatform(positionX, BlockWidth, BlockHeight){
+function createPlatform(positionX, BlockWidth, BlockHeight, positionY=null){
     let topHeight = 1;
-    let bottomHeight = BlockHeight - topHeight;
 
-    for (let x = 0; x < BlockWidth; x++){
-        let tileX = (positionX + x) * 32;
+    if (!positionY){
+        let bottomHeight = BlockHeight - topHeight;
 
-        for (let y = 0 ; y < bottomHeight; y++){
+        for (let x = 0; x < BlockWidth; x++){
+            let tileX = (positionX + x) * 32;
+
+            for (let y = 0 ; y < bottomHeight; y++){
+                add([
+                    sprite("ground"),
+                    pos(tileX, height()-192-(32*(y+1))),
+                    z(1),
+                    "createdPlatform"
+                ])
+            }
+
             add([
-                sprite("ground"),
-                pos(tileX, height()-192-(32*(y+1))),
-                z(1)
+                sprite("topGround"),
+                pos(tileX, height()-192-(32*BlockHeight)),
+                z(1),
+                "createdPlatform"
             ])
         }
 
-        add([
-            sprite("topGround"),
-            pos(tileX, height()-192-(32*BlockHeight)),
-            z(1)
-        ])
+        platforms.push(add([
+            pos(positionX*32, height()-192-(32*BlockHeight)),
+            rect(BlockWidth*32, BlockHeight*32),
+            area(),
+            "platform",
+            {myWidth: BlockWidth*32, myHeight: BlockHeight*32},
+            "createdPlatform"
+        ]))
+    } else {
+        for (let x = 0; x < BlockWidth; x++){
+            let tileX = (positionX + x) * 32
+            add([
+                sprite("topGround"),
+                pos(tileX, height() - 192 - (32*positionY)),
+                z(1),
+                "createdPlatform"
+            ])
+        }
+
+        platforms.push(add([
+            pos(positionX*32, height() - 192 - (32*positionY)),
+            rect(BlockWidth*32, 32),
+            area(),
+            "platform",
+            {myWidth: BlockWidth*32, myHeight: 32},
+            "createdPlatform"
+        ]))
     }
 
-    platforms.push(add([
-        pos(positionX*32, height()-192-(32*BlockHeight)),
-        rect(BlockWidth*32, BlockHeight*32),
-        area(),
-        "platform",
-        {myWidth: BlockWidth*32, myHeight: BlockHeight*32}
-    ]))
-
 }
-createPlatform(10, 4, 5)
 
-function createCollectible(position) {
+function createCollectible(positionX, positionY) {
     const collectibleBlock = add([
-        pos(position),
+        pos(positionX*32, height()-192-(positionY*32)),
         circle(10),
         color(mainColour),
         area(),
@@ -188,38 +221,70 @@ function createCollectible(position) {
     collectibles.push(collectibleBlock);
 }
 
-function createGrass(position) {
-    const grassBlock = add([
-        sprite("grass"),
-        pos(position),
-        scale(4),
-        area(),
-        z(10),
-        "grass"
-    ])
-    allGrass.push(grassBlock);
+const TILE = 32;
+const GROUND_TOP = height() - 192; 
+const tileTopY = (row) => GROUND_TOP - row * TILE;
+const colliderGrids = { grass: {}, spike: {}, weed: {} };
+function addColliderSpan(type, startX, endX, y, heightPx, bottomOffsetPx = 0) {
+  const widthPx = (endX - startX + 1) * TILE;
+  const node = add([
+    pos(startX * TILE, tileTopY(y) + bottomOffsetPx),
+    rect(widthPx, heightPx),
+    anchor("botleft"),
+    area(),
+    opacity(0),
+    type,
+    { startX, endX, y, bottomOffsetPx, heightPx },
+  ]);
+  for (let x = startX; x <= endX; x++) {
+    colliderGrids[type][`${x},${y}`] = node;
+  }
+  return node;
+}
+function mergeOrAdd(type, x, y, heightPx, bottomOffsetPx = 0) {
+  const grid = colliderGrids[type];
+  const left = grid[`${x - 1},${y}`];
+  if (left &&
+      left.y === y &&
+      left.bottomOffsetPx === bottomOffsetPx &&
+      left.heightPx === heightPx) {
+
+    const startX = left.startX;
+    destroy(left);
+    return addColliderSpan(type, startX, x, y, heightPx, bottomOffsetPx);
+  }
+  return addColliderSpan(type, x, x, y, heightPx, bottomOffsetPx);
 }
 
-function createSpike(position) {
-    const spikeBlock = add([
-        sprite("spike"),
-        pos(position),
-        area(),
-        scale(3),
-        "spike"
-    ])
-    allSpike.push(spikeBlock);
+function createGrass(x, y) {
+  add([
+    sprite("grass"),
+    pos(x * TILE, tileTopY(y)+32),
+    anchor("botleft"),
+    scale(4),
+    z(10),
+  ]);
+  mergeOrAdd("grass", x, y, 16, 0);
 }
 
-function createWeed(position) {
-    const weedBlock = add([
-        sprite("weed"),
-        pos(position),
-        area(),
-        scale(3),
-        "weed"
-    ])
-    allWeeds.push(weedBlock);
+function createSpike(x, y) {
+  add([
+    sprite("spike"),
+    pos(x * TILE, tileTopY(y)+32),
+    anchor("botleft"),
+    scale(3),
+  ]);
+  mergeOrAdd("spike", x, y, 12, 0);
+}
+
+function createWeed(x, y) {
+  add([
+    sprite("weed"),
+    pos(x * TILE, tileTopY(y) - 16+64),
+    anchor("botleft"),
+    scale(3),
+  ]);
+  mergeOrAdd("weed", x, y, 32, -16);
 }
 
 // STEALTH BAR
@@ -249,7 +314,7 @@ let playerHeight = spriteHeight * scaleFactor;
 
 const player = add([
     sprite("leaf"),
-    pos(96, height() - (192 + spriteSizes[form]["height"] * 4)),
+    pos(32, height() - (192 + spriteSizes[form]["height"] * 4)),
     area({ width: spriteWidth * scaleFactor, height: spriteHeight * scaleFactor }),
     body(),
     scale(scaleFactor),
@@ -317,100 +382,159 @@ function placeJumpPad(position){
     jumpPads.push(pad);
 }
 
+let returnAnchor = null;
+
+function getSupportingPlatform(tol = 6) {
+    const pLeft   = player.pos.x;
+    const pRight  = pLeft + playerWidth;
+    const pBottom = player.pos.y + playerHeight;
+
+    for (const platform of platforms) {
+        const left  = platform.pos.x;
+        const right = left + platform.myWidth;
+        const top   = platform.pos.y;
+
+        const overlapX = pRight > left && pLeft < right;
+        const onTop    = Math.abs(pBottom - top) <= tol;
+        if (overlapX && onTop) return platform;
+    }
+    return null;
+}
+
+function saveReturnAnchor() {
+    previousPosX = player.pos.x;
+    previousPosY = player.pos.y;
+
+    const plat = getSupportingPlatform();
+    if (plat) {
+        returnAnchor = { type: "top", x: player.pos.x, topY: plat.pos.y };
+    } else {
+        returnAnchor = { type: "free", x: player.pos.x, y: player.pos.y };
+    }
+}
+
+function restoreFromReturnAnchor() {
+    if (!returnAnchor) {
+        player.pos.x = previousPosX;
+        player.pos.y = previousPosY;
+        return;
+    }
+
+    if (returnAnchor.type === "top") {
+        player.pos.x = returnAnchor.x;
+        player.pos.y = returnAnchor.topY - playerHeight;
+        player.velocity.y = 0;
+    } else {
+        player.pos.x = returnAnchor.x;
+        player.pos.y = returnAnchor.y;
+    }
+}
+
 function switchForm() {
-    if (form == "leaf"){
+    if (form === "leaf") {
+        // SAVE FIRST (on-platform info + exact XY)
+        saveReturnAnchor();
+
+        // Switch to flower (do NOT touch pos.y baseline)
         form = "flower";
         player.use(sprite(form));
+
         let newSize = spriteSizes[form];
-        player.area.width = newSize.width * scaleFactor;
+        player.area.width  = newSize.width  * scaleFactor;
         player.area.height = newSize.height * scaleFactor;
-        player.pos.y = height() - (192 + newSize.height * 4)
-        playerWidth = newSize.width * scaleFactor;
+        playerWidth  = newSize.width  * scaleFactor;
         playerHeight = newSize.height * scaleFactor;
 
-        // Zoom out camera to entire level
-        camX = levelWidth / 2
-        camY = height() / 4.5
-        let zoom = width() / levelWidth 
-        camPos(camX, camY)
-        camScale(zoom)
-
-        // Disable player movement
+        // Freeze physics completely in flower mode
+        player.velocity = vec2(0, 0);
         playerGravity = 0;
         playerSpeed = 0;
 
-        // Edit Player Position
-        previousPosX = player.pos.x;
-        previousPosY = player.pos.y;
+        // Camera zoom-out + teleport to placement view (your existing values)
+        let camX = levelWidth / 2;
+        let camY = height() / 4.5;
+        let zoom = width() / levelWidth;
+        camPos(camX, camY);
+        camScale(zoom);
 
+        // (Your UI)
         const userArea = add([
             rect(50, 100),
             color(255, 255, 255),
-            pos(previousPosX, previousPosY+25),
-            "userArea"
-        ])
+            pos(previousPosX, previousPosY + 25),
+            "userArea",
+        ]);
 
         player.pos.x = levelWidth - 500;
         player.pos.y = height() - 1200;
         player.use(scale(15));
 
-        arrow = add([
-            rect(25, 25),
-            color(mainColour),
-            anchor("left"), // so it grows rightwards from player position
-            z(5),
-            "arrow"
-        ]);
-
+        arrow = add([ rect(25, 25), color(mainColour), anchor("left"), z(5), "arrow" ]);
         startPlacingJumpPad();
 
-    }
-    else if (form == "flower"){
+    } else {
         form = "leaf";
         player.use(sprite(form));
+
         let newSize = spriteSizes[form];
-        player.area.width = newSize.width * scaleFactor;
+        player.area.width  = newSize.width  * scaleFactor;
         player.area.height = newSize.height * scaleFactor;
-        player.pos.y = height() - (192 + newSize.height * 4);
-        playerWidth = newSize.width * scaleFactor;
+        playerWidth  = newSize.width  * scaleFactor;
         playerHeight = newSize.height * scaleFactor;
+        player.use(scale(scaleFactor));
 
         destroyAll("jumpPadPreview");
         destroyAll("arrow");
         destroyAll("userArea");
 
+        // Re-enable physics & clear any residual motion
         playerGravity = 980;
         playerSpeed = 200;
+        player.velocity = vec2(0, 0);
 
-        player.pos.x = previousPosX;
-        player.pos.y = previousPosY;
-        player.use(scale(scaleFactor));
+        // RESTORE to the saved anchor (top of platform or free space)
+        restoreFromReturnAnchor();
 
         placingPad = false;
     }
-
-
 }
+
 
 player.onCollide("star", (star) => {
     starsCollected += 1;
     starText.text = `Number of Stars Collected = ${starsCollected}/3`
     destroy(star);
 })
-player.onCollide("grass", () => {actualStealth = 1;})
-player.onCollide("weed", () => {actualStealth = 0.4;})
-player.onCollideEnd("grass", () => {actualStealth = 0;})
-player.onCollideEnd("weed", () => {actualStealth = 0;})
+player.onCollide("grass", () => {grassOverlapCount++; actualStealth = 1;})
+player.onCollide("weed", () => {weedOverlapCount++; actualStealth = 0.4; playerSpeed=100;})
+player.onCollideEnd("grass", () => {grassOverlapCount = Math.max(0, grassOverlapCount - 1); if(grassOverlapCount === 0) {actualStealth = 0;}})
+player.onCollideEnd("weed", () => {weedOverlapCount = Math.max(0, weedOverlapCount-1); if(weedOverlapCount === 0){actualStealth = 0; playerSpeed=200;}})
 player.onCollide("spike", () => {actualHealth -= (1/3);})
 
 onUpdate(() => {
 
     // Create player moving camera
     if (form == "leaf"){
-        let camX = Math.min(Math.max(player.pos.x, visibleWidth / 2), levelWidth - visibleWidth /2);
-        let camY = height() / 1.7
-        camPos(camX, camY)
-        camScale(2)
+        let camX = Math.min(
+            Math.max(player.pos.x, visibleWidth / 2),
+            levelWidth - visibleWidth / 2
+        );
+
+        // Your normal locked cam position
+        let defaultCamY = height() / 1.7;
+        
+        // Camera's top visible edge (taking scale into account)
+        let topVisibleY = defaultCamY - (height() / (2 * 2)); // half screen height / scale
+
+        let camY = defaultCamY;
+
+        // Only move camera if player is off the top of the screen
+        if (player.pos.y < topVisibleY) {
+            camY = player.pos.y + (height() / (2 * 2));
+        }
+
+        camPos(camX, camY);
+        camScale(2);
     }
 
     if (form == "flower" && placingPad && previewPad) {
@@ -444,7 +568,6 @@ onUpdate(() => {
             player.velocity.y = -jumpAmount * 1.5;
         }
     }
-
     // Do level finish message text
     if (starsCollected == 3 && !shownMessage){
         const endMessage = add([
@@ -459,88 +582,88 @@ onUpdate(() => {
         shownMessage = true;
     }
 
-    // Check to see if player is not inside the screen
-    player.pos.x = Math.min(Math.max(player.pos.x, 10), levelWidth - 40);
-    onAnyPlatform = false;
-    const dt = fixedDt;
-    player.velocity.y += playerGravity * dt;
-    let dx = player.velocity.x * dt;
-    let dy = player.velocity.y * dt;
-    const pWidth  = playerWidth;
-    const pHeight = playerHeight;
+    if (form === "leaf"){
+        onAnyPlatform = false;
+        const dt = fixedDt;
+        player.velocity.y += playerGravity * dt;
+        let dx = player.velocity.x * dt;
+        let dy = player.velocity.y * dt;
+        const pWidth  = playerWidth;
+        const pHeight = playerHeight;
 
-    (function sweepVertical() {
-        if (dy === 0) return;
-        const curLeft  = player.pos.x;
-        const curRight = curLeft + pWidth;
-        for (const platform of platforms) {
-            const pLeft   = platform.pos.x;
-            const pRight  = pLeft + platform.myWidth;
-            if (curRight <= pLeft || curLeft >= pRight) continue;
+        (function sweepVertical() {
+            if (dy === 0) return;
+            const curLeft  = player.pos.x;
+            const curRight = curLeft + pWidth;
+            for (const platform of platforms) {
+                const pLeft   = platform.pos.x;
+                const pRight  = pLeft + platform.myWidth;
+                if (curRight <= pLeft || curLeft >= pRight) continue;
 
-            const pTop    = platform.pos.y;
-            const pBottom = pTop + platform.myHeight;
+                const pTop    = platform.pos.y;
+                const pBottom = pTop + platform.myHeight;
 
-            if (dy > 0) {
-                const curBottom  = player.pos.y + pHeight;
-                const nextBottom = curBottom + dy;
-                if (curBottom <= pTop && nextBottom >= pTop) {
-                    player.pos.y = pTop - pHeight;
-                    player.velocity.y = 0;
-                    dy = 0;
-                    onAnyPlatform = true;
-                    return;
-                }
-            } else {
-                const curTop  = player.pos.y;
-                const nextTop = curTop + dy;
-                if (curTop >= pBottom && nextTop <= pBottom) {
-                    player.pos.y = pBottom;
-                    player.velocity.y = 0;
-                    dy = 0;
-                    return;
-                }
-            }
-        }
-        player.pos.y += dy;
-    })();
-    (function sweepHorizontal() {
-        if (dx === 0) return;
-        const curTop    = player.pos.y;
-        const curBottom = curTop + pHeight;
-
-        for (const platform of platforms) {
-            const pTop    = platform.pos.y;
-            const pBottom = pTop + platform.myHeight;
-            if (curBottom <= pTop || curTop >= pBottom) continue;
-
-            const pLeft   = platform.pos.x;
-            const pRight  = pLeft + platform.myWidth;
-
-            if (dx > 0) {
-                const curRight  = player.pos.x + pWidth;
-                const nextRight = curRight + dx;
-                if (curRight <= pLeft && nextRight >= pLeft) {
-                    player.pos.x = pLeft - pWidth;
-                    player.velocity.x = 0;
-                    dx = 0;
-                    return;
-                }
-            } else {
-                const curLeft  = player.pos.x;
-                const nextLeft = curLeft + dx;
-                if (curLeft >= pRight && nextLeft <= pRight) {
-                    player.pos.x = pRight;
-                    player.velocity.x = 0;
-                    dx = 0;
-                    return;
+                if (dy > 0) {
+                    const curBottom  = player.pos.y + pHeight;
+                    const nextBottom = curBottom + dy;
+                    if (curBottom <= pTop && nextBottom >= pTop) {
+                        player.pos.y = pTop - pHeight;
+                        player.velocity.y = 0;
+                        dy = 0;
+                        onAnyPlatform = true;
+                        return;
+                    }
+                } else {
+                    const curTop  = player.pos.y;
+                    const nextTop = curTop + dy;
+                    if (curTop >= pBottom && nextTop <= pBottom) {
+                        player.pos.y = pBottom;
+                        player.velocity.y = 0;
+                        dy = 0;
+                        return;
+                    }
                 }
             }
-        }
-        player.pos.x += dx;
-    })();
+            player.pos.y += dy;
+        })();
+        (function sweepHorizontal() {
+            if (dx === 0) return;
+            const curTop    = player.pos.y;
+            const curBottom = curTop + pHeight;
 
-    player.pos.x = Math.min(Math.max(player.pos.x, 10), levelWidth - 40);
+            for (const platform of platforms) {
+                const pTop    = platform.pos.y;
+                const pBottom = pTop + platform.myHeight;
+                if (curBottom <= pTop || curTop >= pBottom) continue;
+
+                const pLeft   = platform.pos.x;
+                const pRight  = pLeft + platform.myWidth;
+
+                if (dx > 0) {
+                    const curRight  = player.pos.x + pWidth;
+                    const nextRight = curRight + dx;
+                    if (curRight <= pLeft && nextRight >= pLeft) {
+                        player.pos.x = pLeft - pWidth;
+                        player.velocity.x = 0;
+                        dx = 0;
+                        return;
+                    }
+                } else {
+                    const curLeft  = player.pos.x;
+                    const nextLeft = curLeft + dx;
+                    if (curLeft >= pRight && nextLeft <= pRight) {
+                        player.pos.x = pRight;
+                        player.velocity.x = 0;
+                        dx = 0;
+                        return;
+                    }
+                }
+            }
+            player.pos.x += dx;
+        })();
+
+        player.pos.x = Math.min(Math.max(player.pos.x, 10), levelWidth - 40);
+    }
 
     if (form == "leaf"){
         if (player.velocity.x === 0 && onAnyPlatform && playerState !== "idle") {
@@ -613,3 +736,25 @@ onKeyPress("space", () => {
         }
     }
 });
+
+//LOADING LEVELS
+import tutorial from "./levels/tutorial.js"
+
+function loadLevel(levelData) {
+    destroyAll("createdPlatform")
+    destroyAll("star")
+    destroyAll("spike")
+    destroyAll("grass")
+    destroyAll("weed")
+
+    for (const p of levelData.platforms) {createPlatform(p.posX, p.BlockW, p.BlockH, p.posY)}
+    for (const c of levelData.collectiblesForm) {createCollectible(c.posX, c.posY)}
+    for (const h of levelData.hazards) {
+        if (h.type == "grass") {createGrass(h.posX, h.posY)}
+        if (h.type == "spike") {createSpike(h.posX, h.posY)}
+        if (h.type == "weed") {createWeed(h.posX, h.posY)}
+    }
+    for (const t of levelData.texts) {createText(t.textInfo, t.textSize, t.posX, t.posY)}
+}
+
+loadLevel(tutorial)

@@ -1,6 +1,83 @@
 export default {
     platforms: [
-        {},
-        {}
+        {posX: 4, BlockW:1, BlockH:1},
+        {posX:5, BlockW:10, BlockH:2},
+        {posX:7, BlockW:8, BlockH:3},
+        {posX:15, BlockW:2, BlockH:10},
+        {posX:25, BlockW:10, BlockH:1},
+        {posX:26, BlockW:9, BlockH:2},
+        {posX:27, BlockW:3, BlockH:4},
+        {posX:31, BlockW:1, BlockH:6},
+        {posX:33, BlockW:1, BlockH:8},
+        {posX:35, BlockW:2, BlockH:10},
+        {posX:36, BlockW:17, BlockH:5},
+        {posX:54, BlockW:1, BlockH:8, posY:8},
+        {posX:56, BlockW:1, BlockH:10, posY:10},
+        {posX:58, BlockW:1, BlockH:12, posY:12},
+        {posX:60, BlockW:1, BlockH:13, posY:13},
+        {posX:61, BlockW:1, BlockH:13, posY:13},
+        {posX:62, BlockW:1, BlockH:13, posY:13},
+        {posX:71, BlockW:4, BlockH:16},
+        {posX:78, BlockW:3, BlockH:5, posY:5},
+        {posX:80, BlockW:3, BlockH:4, posY:4},
+        {posX:82, BlockW:3, BlockH:3, posY:3},
+        {posX:84, BlockW:3, BlockH:2, posY:2},
+
+    ],
+
+    collectiblesForm: [
+        {posX:7, posY:4},
+        {posX:36, posY:11},
+        {posX:61, posY:14}
+    ],
+
+    hazards: [
+        {type:"spike", posX:9, posY:4},
+        {type:"spike", posX:17, posY:1},
+        {type:"spike", posX:19, posY:1},
+        {type:"spike", posX:21, posY:1},
+        {type:"spike", posX:22, posY:1},
+        {type:"spike", posX:30, posY:3},
+        {type:"spike", posX:32, posY:3},
+        {type:"spike", posX:34, posY:3},
+        {type:"spike", posX:75, posY:1},
+        {type:"spike", posX:78, posY:1},
+        {type:"spike", posX:80, posY:1},
+        {type:"spike", posX:82, posY:1},
+        {type:"spike", posX:84, posY:1},
+
+
+        {type:"grass", posX:37, posY:6},
+        {type:"grass", posX:39, posY:6},
+        {type:"grass", posX:41, posY:6},
+        {type:"grass", posX:43, posY:6},
+        {type:"grass", posX:45, posY:6},
+        {type:"grass", posX:47, posY:6},
+        {type:"grass", posX:49, posY:6},
+        {type:"grass", posX:51, posY:6},
+
+        {type:"weed", posX:52, posY:1},
+        {type:"weed", posX:53, posY:1},
+        {type:"weed", posX:54, posY:1},
+        {type:"weed", posX:55, posY:1},
+        {type:"weed", posX:56, posY:1},
+        {type:"weed", posX:57, posY:1},
+        {type:"weed", posX:58, posY:1},
+        {type:"weed", posX:59, posY:1},
+        {type:"weed", posX:60, posY:1},
+        {type:"weed", posX:61, posY:1},
+        {type:"weed", posX:62, posY:1},
+        {type:"weed", posX:63, posY:1},
+        {type:"weed", posX:64, posY:1},
+        {type:"weed", posX:65, posY:1},
+        {type:"weed", posX:66, posY:1},
+        {type:"weed", posX:67, posY:1},
+        {type:"weed", posX:68, posY:1},
+        {type:"weed", posX:69, posY:1},
+        {type:"weed", posX:70, posY:1},
+    ],
+
+    texts: [
+        {textInfo: "Controls: W A S D / Left Joystick, B, A, X", textSize: 10, posX:5, posY:7}
     ]
 }
