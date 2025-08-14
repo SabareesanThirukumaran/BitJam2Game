@@ -84,6 +84,5 @@ export default {
         {textInfo: "Activate flower mode here.", textSize: 10, posX: 1900, posY:450},
         {textInfo: "Theres weed below. Weed Slows You down and only partially increases your stealth.", textSize: 10, posX:1750, posY: 600},
         {textInfo: "Enjoy the game!", textSize: 15, posX: 2650, posY: 550}
-
     ]
 }

@@ -45,6 +45,8 @@ let displayedHealth = 1;
 let actualHealth = 1;
 let grassOverlapCount = 0;
 let weedOverlapCount = 0;
+let music;
+let music2;
 
 // LOADING ASSETS
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
@@ -78,6 +80,8 @@ loadSprite("weed", "assets/images/WeedsSprite.png");
 loadSprite("flower", "assets/images/FlowerSprite.png");
 loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
+
+loadSound("walk", "assets/sounds/LeafMoving.mp3")
 
 // ALL OF UI
 const starText = add([
