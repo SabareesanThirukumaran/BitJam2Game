@@ -36,7 +36,8 @@ loadSprite("weed", "assets/images/WeedsSprite.png");
 loadSprite("flower", "assets/images/FlowerSprite.png");
 loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
-loadSprite("mainMenuBG", "assets/images/MainMenuBackground.png")
+loadSprite("mainMenuBG", "assets/images/MainMenuBackground.png");
+loadSprite("gameBG", "assets/images/gameBackground.png");
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
 
 loadSprite("spikeRed", "assets/images/Spike_RedSprite.png");
@@ -44,6 +45,24 @@ const mainColour = [67, 160, 71];
 import tutorial from "./levels/tutorial.js"
 import level1 from "./levels/level1.js"
 import level2 from "./levels/level2.js"
+
+function addRepeatingBackground(spriteName) {
+    const tileSize = 1526  // size of your background image (width/height in px)
+    const cols = Math.ceil(3008 / tileSize) + 1
+    const rows = Math.ceil(height() / tileSize) + 1
+
+    for (let x = 0; x < cols; x++) {
+        for (let y = 0; y < rows; y++) {
+            add([
+                sprite(spriteName),
+                pos(x * tileSize, y * tileSize),
+                fixed(),
+                z(-1),
+                "bgTile",
+            ])
+        }
+    }
+}
 
 function transitionScenes(sceneTo, parameters, duration=0.5){
     const overlay = add([
@@ -56,7 +75,7 @@ function transitionScenes(sceneTo, parameters, duration=0.5){
 
     tween(0, 1, duration, (overlaying) => overlay.opacity = overlaying, easings.linear)
         .then(() => {
-            go(sceneTo, {level: parameters.level});
+            go(sceneTo, {level: parameters.level, catalystMax:parameters.catalystMax});
 
             const newOverlay = add([
                 rect(width(), height()),
@@ -72,7 +91,7 @@ function transitionScenes(sceneTo, parameters, duration=0.5){
 scene("mainMenu", () => {
     const baseWidth = 320;
     const baseHeight = 180;
-    const mainScaleFactor = Math.floor(Math.min(width() / baseWidth, height() / baseHeight));
+    const mainScaleFactor = Math.floor(Math.min((width() / baseWidth) * 1.15, (height() / baseHeight) * 1.15));
 
     add([
         sprite("mainMenuBG"),
@@ -89,8 +108,8 @@ scene("mainMenu", () => {
     ])
 
     add([
-        text("Press ENTER to Play", {size: 30, font:"pixeled"}),
-        pos(width() / 2, height() / 1.075),
+        text("Press ENTER to Play", {size: 20, font:"pixeled"}),
+        pos(width() / 2, height() / 1.05),
         anchor("center"),
         color(0, 0, 0)
     ])
@@ -138,7 +157,7 @@ scene("levelSelect", () => {
     ])
 
     onClick("tutorial", () => {
-        transitionScenes("game", {level: tutorial})
+        transitionScenes("game", {level: tutorial, catalystMax:0})
     })
 
     //Level 1
@@ -171,7 +190,7 @@ scene("levelSelect", () => {
     ])
 
     onClick("levelOne", () => {
-        transitionScenes("game", {level: level1})
+        transitionScenes("game", {level: level1, catalystMax: 0})
     })
 
     //Level 2
@@ -204,7 +223,7 @@ scene("levelSelect", () => {
     ])
 
     onClick("levelTwo", () => {
-        transitionScenes("game", {level: level2})
+        transitionScenes("game", {level: level2, catalystMax: 1})
     })
 
     //Level 2
@@ -238,7 +257,7 @@ scene("levelSelect", () => {
 
 })
 
-scene("game", ({level}) => {
+scene("game", ({level, catalystMax}) => {
     // CONFIGURING VARIABLES
     const levelWidth = 3008;
     let scaleFactor = 4;
@@ -279,7 +298,7 @@ scene("game", ({level}) => {
     let grassOverlapCount = 0;
     let weedOverlapCount = 0;
 
-    let totalTime = 20;
+    let totalTime = 13;
     let timeLeft = totalTime;
     let catalystShown = 0;
 
@@ -378,8 +397,8 @@ scene("game", ({level}) => {
 
     function createText(textInfo, textSize, positionX, positionY){
         const textCreated = add([
-            text(`${textInfo}`, {size:textSize, font:"pixeled", width:500}),
-            pos(positionX, positionY),
+            text(`${textInfo}`, {size:(Math.max(10, Math.floor(width() / 600))), font:"pixeled", width:500}),
+            pos(positionX, (GROUND_TOP-(positionY * 0.7))),
             color(mainColour),
             z(10)
         ])
@@ -583,6 +602,7 @@ scene("game", ({level}) => {
             {Padwidth: 100, Padheight: 15}
         ])
         jumpPads.push(pad);
+        allSprites.push(pad)
     }
 
     function flashWhite(duration = 0.5) {
@@ -716,7 +736,7 @@ scene("game", ({level}) => {
 
             const userArea = add([
                 rect(50, 100),
-                color(255, 255, 255),
+                color(mainColour),
                 pos(previousPosX, previousPosY + 25),
                 "userArea",
             ]);
@@ -886,7 +906,7 @@ scene("game", ({level}) => {
             stealthBarInner.width = barWidth * displayedStealth;
             healthBarInner.width = barWidth * displayedHealth;
 
-            if (catalystShown == 0) {
+            if (catalystShown <= catalystMax) {
                 if (timeLeft > 0 ){
                     timeLeft -= fixedDt;
                     let fraction = timeLeft / totalTime;
@@ -896,7 +916,7 @@ scene("game", ({level}) => {
                     current = "catalyst"
                     catalystBarInner.width = 0;
                     catalystShown += 1;
-                    if (catalystShown == 1){
+                    if (catalystShown == 1 || catalystShown == 2){
                         catalystTime()
                     }
                 }
@@ -928,7 +948,7 @@ scene("game", ({level}) => {
                     break;
                 }
             }
-            previewPad.use(outline(10, colliding ? [0, 255, 0] : [255, 0, 0]))
+            previewPad.use(color(colliding ? [255, 255, 255] : [0, 30, 0]))
 
         }
 
@@ -1033,6 +1053,10 @@ scene("game", ({level}) => {
         allTexts.forEach(t => {t.use(color(67, 19, 8))})
         allBars.forEach(b => {b.use(color(67, 19, 8))})
         collectibles.forEach(c => {c.use(color(67, 19, 8))})
+
+        if (catalystMax == 1){
+            timeLeft = totalTime;
+        }
 
         let rebuildTime = 6;
         let elapsedTime = 0;
