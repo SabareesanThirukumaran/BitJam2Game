@@ -78,11 +78,11 @@ export default {
     ],
 
     texts: [
-        {textInfo: "Collect 3 Stars to activate Flower mode.\n Press E to activate flower mode.\nThen press SPACE to place a jump platform \n(only when touching a boundary)", textSize: 10, posX:575, posY:500},
+        {textInfo: "When the timer runs out, its casualty time. \nHide in grass to increase your stealth to prevent getting damaged.", textSize: 10, posX:575, posY:450},
         {textInfo: "Beware of Spikes. (You only have 3 lives).", textSize: 9, posX:25, posY: 575},
-        {textInfo: "When the timer runs out, its casualty time. \nHide in grass to increase your stealth to prevent getting damaged.", textSize: 10, posX: 1200, posY: 500},
-        {textInfo: "Activate flower mode here.", textSize: 10, posX: 1900, posY:450},
-        {textInfo: "Theres weed below. Weed Slows You down and only partially increases your stealth.", textSize: 10, posX:1750, posY: 600},
+        {textInfo: "During casualty time the timer will go back up.\n Once full you will return back to normal.\n Casualty time only occurs once per game so you better find some grass !\n If not in grass, your health will deplete rapidly", textSize: 10, posX: 1200, posY:400},
+        {textInfo: "Collect 3 Stars to activate Flower mode.\n Press E to activate flower mode.\nThen press SPACE to place a jump platform \n(only when jumppad is touching a boundary)", textSize: 10, posX: 1850, posY: 450},
+        {textInfo: "Theres weed below. Weed reduces your health and slows you down", textSize: 10, posX:1750, posY: 600},
         {textInfo: "Enjoy the game!", textSize: 15, posX: 2650, posY: 550}
     ]
 }

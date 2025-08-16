@@ -38,6 +38,8 @@ loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
 loadSprite("mainMenuBG", "assets/images/MainMenuBackground.png")
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
+
+loadSprite("spikeRed", "assets/images/Spike_RedSprite.png");
 const mainColour = [67, 160, 71];
 import tutorial from "./levels/tutorial.js"
 
@@ -80,7 +82,7 @@ scene("mainMenu", () => {
 
     add([
         text("Garden of Time", {size: 55, font:"pixeled"}),
-        pos(width() / 2.25, height() / 4),
+        pos(width() / 3, height() / 7),
         anchor("center"),
         color(mainColour),
     ])
@@ -179,17 +181,33 @@ scene("game", ({level}) => {
     let grassOverlapCount = 0;
     let weedOverlapCount = 0;
 
+    let totalTime = 20;
+    let timeLeft = totalTime;
+    let catalystShown = 0;
+
+    const barWidth = width() * 0.2;
+    const barHeight = height() * 0.05;
+    const barMargin = width() * 0.05;
+    const textSizeBars = Math.floor(width() * 0.01)
+    const barMarginRight = width() * 0.775
+    const textMarginRight = width() * 0.66
+
     // STEALTH BAR
-    const stealthBarText = add([text("Stealth :", {size:25, font:"pixeled"}), pos(50, 70), color(mainColour), fixed()])
-    const stealthBarBg = add([rect(420, 60), pos(300,50), color(mainColour), fixed(), z(100)]);
-    const stealthBar = add([rect(400, 50), pos(310, 55), color(0, 0, 0), fixed(), z(101)]);
-    const stealthBarInner = add([rect(400, 50), pos(310, 55), color(mainColour), outline(4), fixed(), z(101)])
+    const stealthBarText = add([text("Stealth", {size:textSizeBars, font:"pixeled"}), pos(barMargin-50, height() * 0.05), color(mainColour), fixed()])
+    const stealthBarBg = add([rect(barWidth + 20, barHeight + 10), pos(barMargin + 100, height() * 0.03), color(mainColour), fixed(), z(100)]);
+    const stealthBar = add([rect(barWidth, barHeight), pos(barMargin + 110, height() * 0.035), color(0, 0, 0), fixed(), z(101)]);
+    const stealthBarInner = add([rect(barWidth, barHeight), pos(barMargin+110, height() * 0.035), color(mainColour), outline(4), fixed(), z(101)])
 
     // HEALTH BAR
-    const healthBarText = add([text("Health :", {size:25, font:"pixeled"}), pos(50, 140), color(mainColour), fixed()])
-    const healthBarBg = add([rect(420, 60), pos(300,120), color(mainColour), fixed(), z(100)]);
-    const healthBar = add([rect(400, 50), pos(310, 125), color(0, 0, 0), fixed(), z(101)]);
-    const healthBarInner = add([rect(400, 50), pos(310, 125), color(mainColour), outline(4), fixed(), z(101)])
+    const healthBarText = add([text("Health", {size:textSizeBars, font:"pixeled"}), pos(barMargin-50, height() * 0.135), color(mainColour), fixed()])
+    const healthBarBg = add([rect(barWidth + 20, barHeight + 10), pos(barMargin + 100, height() * 0.11), color(mainColour), fixed(), z(100)]);
+    const healthBar = add([rect(barWidth, barHeight), pos(barMargin + 110, height() * 0.115), color(0, 0, 0), fixed(), z(101)]);
+    const healthBarInner = add([rect(barWidth, barHeight), pos(barMargin + 110, height() * 0.115), color(mainColour), outline(4), fixed(), z(101)])
+
+    // CATALYST BAR
+    const catalystBarBg = add([rect(barWidth+20, barHeight+10), pos(barMarginRight, height() * 0.11), color(mainColour), fixed(), z(100)]);
+    const catalystBar = add([rect(barWidth, barHeight), pos(barMarginRight + 10, height() * 0.115), color(0, 0, 0), fixed(), z(105)])
+    const catalystBarInner = add([rect(barWidth, barHeight), pos(barMarginRight + 10, height() * 0.115), color(mainColour), outline(4), fixed(), z(105)])
 
     // PLAYER SETUP
     let form = "leaf";
@@ -211,10 +229,11 @@ scene("game", ({level}) => {
     const tileTopY = (row) => GROUND_TOP - row * TILE;
     const colliderGrids = { grass: {}, spike: {}, weed: {} };
     const starText = add([
-        text("Number of Stars Collected = 0/3", {size:25, font:"pixeled"}),
-        pos(width()-800, 50),
+        text("Number of Stars Collected = 0/3", {size:(Math.max(10, Math.floor(width() / 95))), font:"pixeled"}),
+        pos(textMarginRight, height() * 0.05),
         color(mainColour),
-        fixed()
+        fixed(),
+        z(10)
     ])
     const platforms = [];
     const player = add([
@@ -227,16 +246,24 @@ scene("game", ({level}) => {
 
         "player"
     ]);
+    let allSprites = [];
+    let allTexts = [];
+    let allBars = [];
+    let current = "normal";
+    allBars.push(stealthBarBg, stealthBarInner, catalystBarBg, catalystBarInner, healthBarBg, healthBarInner)
+    allTexts.push(stealthBarText, healthBarText,starText)
+    allSprites.push(player)
     player.play("idle")
     player.velocity = vec2(0, 0);
     // DO NOT EDIT, TOP LAYER OF GROUND
     for (let i = 0; i < 94; i++){
-        add([
+        const topBlock = add([
             sprite("topGround"),
             pos(32*i, height()-192),
             area({ collisionIgnore: ["player"]}),
             z(1)
         ])
+        allSprites.push(topBlock)
     }
     platforms.push(
         add([
@@ -252,12 +279,13 @@ scene("game", ({level}) => {
     )
 
     function createText(textInfo, textSize, positionX, positionY){
-        add([
+        const textCreated = add([
             text(`${textInfo}`, {size:textSize, font:"pixeled", width:500}),
             pos(positionX, positionY),
             color(mainColour),
             z(10)
         ])
+        allTexts.push(textCreated)
     }
 
     function recreateOverlay(){
@@ -291,21 +319,24 @@ scene("game", ({level}) => {
                 let tileX = (positionX + x) * 32;
 
                 for (let y = 0 ; y < bottomHeight; y++){
-                    add([
+                    let topCreatedPlatform = add([
                         sprite("ground"),
                         pos(tileX, height()-192-(32*(y+1))),
                         z(1),
                         "createdPlatform"
                     ])
+                    allSprites.push(topCreatedPlatform)
                 }
 
-                add([
+                let bottomCreatedPlatform = add([
                     sprite("topGround"),
                     pos(tileX, height()-192-(32*BlockHeight)),
                     z(1),
                     "createdPlatform"
                 ])
+                allSprites.push(bottomCreatedPlatform)
             }
+
 
             platforms.push(add([
                 pos(positionX*32, height()-192-(32*BlockHeight)),
@@ -318,12 +349,13 @@ scene("game", ({level}) => {
         } else {
             for (let x = 0; x < BlockWidth; x++){
                 let tileX = (positionX + x) * 32
-                add([
+                let topPlatformCreation = add([
                     sprite("topGround"),
                     pos(tileX, height() - 192 - (32*positionY)),
                     z(1),
                     "createdPlatform"
                 ])
+                allSprites.push(topPlatformCreation)
             }
 
             platforms.push(add([
@@ -382,33 +414,36 @@ scene("game", ({level}) => {
     }
 
     function createGrass(x, y) {
-    add([
-        sprite("grass"),
-        pos(x * TILE, tileTopY(y)+32),
-        anchor("botleft"),
-        scale(4),
-        z(10),
-    ]);
-    mergeOrAdd("grass", x, y, 16, 0);
+        const grassBlock = add([
+            sprite("grass"),
+            pos(x * TILE, tileTopY(y)+32),
+            anchor("botleft"),
+            scale(4),
+            z(10),
+        ]);
+        allSprites.push(grassBlock)
+        mergeOrAdd("grass", x, y, 16, 0);
     }
 
     function createSpike(x, y) {
-        add([
+        const spikeBlock = add([
             sprite("spike"),
             pos(x * TILE, tileTopY(y)+32),
             anchor("botleft"),
             scale(3),
         ]);
+        allSprites.push(spikeBlock)
         mergeOrAdd("spike", x, y, 12, 0);
     }
 
     function createWeed(x, y) {
-        add([
+        const weedBlock = add([
             sprite("weed"),
             pos(x * TILE, tileTopY(y) - 16+64),
             anchor("botleft"),
             scale(3),
         ]);
+        allSprites.push(weedBlock)
         mergeOrAdd("weed", x, y, 32, -16);
     }
 
@@ -452,14 +487,14 @@ scene("game", ({level}) => {
         jumpPads.push(pad);
     }
 
-    function flashWhite(duration = 0.1) {
+    function flashWhite(duration = 0.5) {
         add([
             rect(width(), height()),
             color(255, 255, 255),
-            opacity(1), // Needed for lifespan fade
+            opacity(1),
             fixed(),
             z(999),
-            lifespan(duration, { fade: 0.1 })
+            lifespan(duration, { fade: 0.5 })
         ]);
     }
 
@@ -622,9 +657,9 @@ scene("game", ({level}) => {
 
     player.onCollide("star", (star) => {starsCollected += 1;starText.text = `Number of Stars Collected = ${starsCollected}/3`; destroy(star);})
     player.onCollide("grass", () => {grassOverlapCount++; actualStealth = 1;})
-    player.onCollide("weed", () => {weedOverlapCount++; actualStealth = 0.4; playerSpeed=100;})
+    player.onCollide("weed", () => {weedOverlapCount++; playerSpeed=100; actualHealth -= (Math.random() * 0.1)})
     player.onCollideEnd("grass", () => {grassOverlapCount = Math.max(0, grassOverlapCount - 1); if(grassOverlapCount === 0) {actualStealth = 0;}})
-    player.onCollideEnd("weed", () => {weedOverlapCount = Math.max(0, weedOverlapCount-1); if(weedOverlapCount === 0){actualStealth = 0; playerSpeed=200;}})
+    player.onCollideEnd("weed", () => {weedOverlapCount = Math.max(0, weedOverlapCount-1); if(weedOverlapCount === 0){playerSpeed=200;}})
     player.onCollide("spike", () => {actualHealth -= (1/3);})
     player.onCollide("jumpPad", (pad) => {
         player.pos.y = pad.pos.y - playerHeight;
@@ -633,68 +668,28 @@ scene("game", ({level}) => {
 
     onUpdate(() => {
 
-        if (form == "leaf"){
+        if (form == "leaf"){    
+            const camScaleFactor = 2;
+            const visibleWidthWorld  = width()  / camScaleFactor;
+            const visibleHeightWorld = height() / camScaleFactor;
+
             let camX = Math.min(
-                Math.max(player.pos.x, visibleWidth / 2),
-                levelWidth - visibleWidth / 2
+            Math.max(player.pos.x, visibleWidthWorld / 2),
+            levelWidth - visibleWidthWorld / 2
             );
-
-            // Your normal locked cam position
-            let defaultCamY = height() / 1.75;
-            
-            // Camera's top visible edge (taking scale into account)
-            let topVisibleY = defaultCamY - (height() / (2 * 2)); // half screen height / scale
-
+            const baseFraction = 0.35;
+            const adjustedFraction = baseFraction * (600 / height());
+            const playerTopAtGround = GROUND_TOP - playerHeight;
+            let defaultCamY = playerTopAtGround - (visibleHeightWorld * (0.5 - adjustedFraction));
+            let topVisibleY = defaultCamY - (visibleHeightWorld / 2);
             let camY = defaultCamY;
 
-            // Only move camera if player is off the top of the screen
             if (player.pos.y < topVisibleY) {
-                camY = player.pos.y + (height() / (2 * 2));
+                camY = player.pos.y + (visibleHeightWorld / 2);
             }
-
             camPos(camX, camY);
-            camScale(2);
-        }
+            camScale(camScaleFactor);
 
-        if (form == "flower" && placingPad && previewPad) {
-            const playerCenter = vec2(player.pos.x, player.pos.y + arrowOffsetY);
-            const mouseWorld = toWorld(mousePos());
-            const dir = mouseWorld.sub(playerCenter);
-            const dist = dir.len();
-            const tipPosition = playerCenter.add(dir);
-            const offsetPos = tipPosition.add(vec2(Math.cos(arrow.angle), Math.sin(arrow.angle)).scale(15))
-            
-            arrow.angle = dir.angle();
-            arrow.width = dist;
-            arrow.pos = playerCenter;
-
-            previewPad.pos = offsetPos;
-            let colliding = false;
-
-            for (const platform of platforms) {
-                if (overlapping(previewPad, platform)){
-                    colliding = true;
-                    break;
-                }
-            }
-            previewPad.use(outline(10, colliding ? [0, 255, 0] : [255, 0, 0]))
-
-        }
-
-        if (starsCollected == 3 && !shownMessage){
-            const endMessage = add([
-                text("Reach the end to go to the next level!",{size:15, font:"pixeled"}),
-                pos(0, 0),
-                fixed(),
-                color(mainColour),
-            ])
-
-            endMessage.pos.x = (width() - endMessage.width) / 2
-            endMessage.pos.y = 200;
-            shownMessage = true;
-        }
-
-        if (form === "leaf"){
             onAnyPlatform = false;
             const dt = fixedDt;
             player.velocity.y += playerGravity * dt;
@@ -775,9 +770,7 @@ scene("game", ({level}) => {
             })();
 
             player.pos.x = Math.min(Math.max(player.pos.x, 10), levelWidth - 40);
-        }
 
-        if (form == "leaf"){
             if (player.velocity.x === 0 && onAnyPlatform && playerState !== "idle") {
                 player.use(sprite("leaf"));
                 player.play("idle");
@@ -788,7 +781,69 @@ scene("game", ({level}) => {
                 player.use(sprite("movingLeaf"));
                 playerState = "moving"
             }
-        } 
+
+            const barSpeed = 3;
+            displayedStealth += (actualStealth - displayedStealth) * barSpeed * fixedDt;
+            displayedHealth += (actualHealth - displayedHealth) * barSpeed * fixedDt;
+            stealthBarInner.width = barWidth * displayedStealth;
+            healthBarInner.width = barWidth * displayedHealth;
+
+            if (catalystShown == 0) {
+                if (timeLeft > 0 ){
+                    timeLeft -= fixedDt;
+                    let fraction = timeLeft / totalTime;
+                    catalystBarInner.width = barWidth * fraction;
+                } else {
+                    timeLeft = 0;
+                    current = "catalyst"
+                    catalystBarInner.width = 0;
+                    catalystShown += 1;
+                    if (catalystShown == 1){
+                        catalystTime()
+                    }
+                }
+            }
+        }
+
+        if (form == "flower" && placingPad && previewPad) {
+            const playerCenter = vec2(player.pos.x, player.pos.y + arrowOffsetY);
+            const mouseWorld = toWorld(mousePos());
+            const dir = mouseWorld.sub(playerCenter);
+            const dist = dir.len();
+            const tipPosition = playerCenter.add(dir);
+            const offsetPos = tipPosition.add(vec2(Math.cos(arrow.angle), Math.sin(arrow.angle)).scale(15))
+            
+            arrow.angle = dir.angle();
+            arrow.width = dist;
+            arrow.pos = playerCenter;
+
+            previewPad.pos = offsetPos;
+            let colliding = false;
+
+            for (const platform of platforms) {
+                if (overlapping(previewPad, platform)){
+                    colliding = true;
+                    break;
+                }
+            }
+            previewPad.use(outline(10, colliding ? [0, 255, 0] : [255, 0, 0]))
+
+        }
+
+        if (starsCollected == 3 && !shownMessage && current == "normal"){
+            const endMessage = add([
+                text("Reach the end to go to the next level!",{size:15, font:"pixeled"}),
+                pos(0, 0),
+                fixed(),
+                color(mainColour),
+                z(10)
+            ])
+            allTexts.push(endMessage)
+
+            endMessage.pos.x = (width() - endMessage.width) / 2
+            endMessage.pos.y = 200;
+            shownMessage = true;
+        }
 
         if (removing) {
             allowMovement = false;
@@ -809,12 +864,6 @@ scene("game", ({level}) => {
             }
         }
 
-        const barSpeed = 3;
-        displayedStealth += (actualStealth - displayedStealth) * barSpeed * fixedDt;
-        displayedHealth += (actualHealth - displayedHealth) * barSpeed * fixedDt;
-        stealthBarInner.width = 400 * displayedStealth;
-        healthBarInner.width = 400 * displayedHealth;
-
     })
 
     onKeyDown("a", () => { if (allowMovement) {player.velocity.x = -playerSpeed;}})
@@ -823,7 +872,7 @@ scene("game", ({level}) => {
     onKeyRelease("d", () => { if (allowMovement) {if (player.velocity.x > 0) player.velocity.x = 0;} })
     onKeyPress("w" , () => { if (allowMovement) { if (onAnyPlatform) { player.velocity.y = -jumpAmount; }}})
     onKeyPress("e", () => {
-        if (starsCollected == 3){
+        if (starsCollected == 3 && current == "normal"){
             starsCollected = 0;
             if (removing){return;}
             recreateOverlay()
@@ -832,14 +881,17 @@ scene("game", ({level}) => {
             switchForm();
             starText.text = "Number of Stars Collected = 0/3"
         }
-        else {
-            const notEnough = add([
-                text("Not enough stars collected !", {size: 8, font: "pixeled"}),
-                color(mainColour),
-                pos(player.pos.x, player.pos.y-100),
-                "notEnough"
-            ])
-            setTimeout(() => {destroyAll("notEnough")}, 1000)
+        else {  
+            if (current == "normal"){
+                const notEnough = add([
+                    text("Not enough stars collected !", {size: 8, font: "pixeled"}),
+                    color(mainColour),
+                    pos(player.pos.x, player.pos.y-100),
+                    "notEnough"
+                ])
+                allTexts.push(notEnough)
+                setTimeout(() => {destroyAll("notEnough")}, 1000)
+            }
         }
     })
     onKeyPress("space", () => {
@@ -879,6 +931,47 @@ scene("game", ({level}) => {
         for (const t of levelData.texts) {createText(t.textInfo, t.textSize, t.posX, t.posY)}
     }
     loadLevel(level)
+
+    onResize(() => {
+        location.reload()
+    })
+
+    function catalystTime() {
+        flashWhite()
+        allSprites.forEach(s => {s.use(color(255, 30, 30))})
+        allTexts.forEach(t => {t.use(color(67, 19, 8))})
+        allBars.forEach(b => {b.use(color(67, 19, 8))})
+        collectibles.forEach(c => {c.use(color(67, 19, 8))})
+
+        let rebuildTime = 10;
+        let elapsedTime = 0;
+        let rebuilded = true;
+
+        catalystBarInner.onUpdate(() => {
+            if (!rebuilded) return;
+
+            if (elapsedTime < rebuildTime) {
+                elapsedTime += fixedDt;
+                let fractionR = elapsedTime / rebuildTime;
+                catalystBarInner.width = barWidth * fractionR;
+                
+                let damageProb = actualStealth
+                if (damageProb < 1 && actualHealth > 0){
+                    actualHealth -= Math.random() * 0.002
+                }
+            } else {
+                rebuilded = false
+                catalystBarInner.width = barWidth;
+                allSprites.forEach(s => {s.use(color(255, 255, 255))})
+                allTexts.forEach(t => {t.use(color(mainColour))})
+                allBars.forEach(b => {b.use(color(mainColour))})
+                collectibles.forEach(c => {c.use(color(mainColour))})
+                current = "normal"
+
+            }
+
+        })
+    }
 })
 
 go("mainMenu")
