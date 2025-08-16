@@ -42,6 +42,8 @@ loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
 loadSprite("spikeRed", "assets/images/Spike_RedSprite.png");
 const mainColour = [67, 160, 71];
 import tutorial from "./levels/tutorial.js"
+import level1 from "./levels/level1.js"
+import level2 from "./levels/level2.js"
 
 function transitionScenes(sceneTo, parameters, duration=0.5){
     const overlay = add([
@@ -106,6 +108,7 @@ scene("levelSelect", () => {
         color(mainColour)
     ])
 
+    // Tutorial Level
     const tutorialButtonBG = add([
         rect(300, 100),
         pos(width() / 2, height() / 2.25),
@@ -137,6 +140,102 @@ scene("levelSelect", () => {
     onClick("tutorial", () => {
         transitionScenes("game", {level: tutorial})
     })
+
+    //Level 1
+    const levelOneBG = add([
+        rect(300, 100),
+        pos(width() / 2, height() / 1.75),
+        anchor("center"),
+        color(mainColour),
+        outline(10, mainColour),
+        area(),
+        "levelOne"
+    ])
+
+    const levelOneButton = add([
+        text("Level 1", {size: 24, font:"pixeled"}),
+        pos(width()/2, height()/1.75),
+        anchor("center"),
+        color(0, 0, 0),
+        z(2),
+        area(),
+        "levelOne"
+    ])
+
+    onHover("levelOne", () => {
+        setCursor("pointer")
+    })
+
+    onHoverEnd("levelOne", () => [
+        setCursor("default")
+    ])
+
+    onClick("levelOne", () => {
+        transitionScenes("game", {level: level1})
+    })
+
+    //Level 2
+    const levelTwoBG = add([
+        rect(300, 100),
+        pos(width() / 2, height() / 1.43),
+        anchor("center"),
+        color(mainColour),
+        outline(10, mainColour),
+        area(),
+        "levelTwo"
+    ])
+
+    const levelTwoButton = add([
+        text("Level 2", {size: 24, font:"pixeled"}),
+        pos(width()/2, height()/1.43),
+        anchor("center"),
+        color(0, 0, 0),
+        z(2),
+        area(),
+        "levelTwo"
+    ])
+
+    onHover("levelTwo", () => {
+        setCursor("pointer")
+    })
+
+    onHoverEnd("levelTwo", () => [
+        setCursor("default")
+    ])
+
+    onClick("levelTwo", () => {
+        transitionScenes("game", {level: level2})
+    })
+
+    //Level 2
+    const comingBG = add([
+        rect(300, 100),
+        pos(width() / 2, height() / 1.21),
+        anchor("center"),
+        color(mainColour),
+        outline(10, mainColour),
+        area(),
+        "coming"
+    ])
+
+    const comingButton = add([
+        text("Coming Soon", {size: 24, font:"pixeled"}),
+        pos(width()/2, height()/1.21),
+        anchor("center"),
+        color(0, 0, 0),
+        z(2),
+        area(),
+        "coming"
+    ])
+
+    onHover("coming", () => {
+        setCursor("pointer")
+    })
+
+    onHoverEnd("coming", () => [
+        setCursor("default")
+    ])
+
 })
 
 scene("game", ({level}) => {
@@ -180,7 +279,7 @@ scene("game", ({level}) => {
     let grassOverlapCount = 0;
     let weedOverlapCount = 0;
 
-    let totalTime = 18;
+    let totalTime = 20;
     let timeLeft = totalTime;
     let catalystShown = 0;
 
@@ -833,21 +932,6 @@ scene("game", ({level}) => {
 
         }
 
-        if (starsCollected == 3 && !shownMessage && current == "normal"){
-            const endMessage = add([
-                text("Reach the end to go to the next level!",{size:15, font:"pixeled"}),
-                pos(0, 0),
-                fixed(),
-                color(mainColour),
-                z(10)
-            ])
-            allTexts.push(endMessage)
-
-            endMessage.pos.x = (width() - endMessage.width) / 2
-            endMessage.pos.y = 200;
-            shownMessage = true;
-        }
-
         if (removing) {
             allowMovement = false;
             for (let i = cells.length - 1; i >= 0; i--) {
@@ -868,7 +952,7 @@ scene("game", ({level}) => {
         }
 
         if (actualHealth <= 0.1){
-            transitionScenes("deathPage", {})
+            transitionScenes("deathPage", {level: level})
         }
 
     })
@@ -981,7 +1065,7 @@ scene("game", ({level}) => {
     }
 })
 
-scene("deathPage", () => {
+scene("deathPage", ({level}) => {
     add([
         text("You Died", {size:Math.max(10, Math.floor(width() / 15)), font:"pixeled"}),
         pos(width() / 2, height() / 4),
@@ -1018,7 +1102,7 @@ scene("deathPage", () => {
     ])
 
     onClick("restartButton", () => {
-        transitionScenes("game", {level: tutorial})
+        transitionScenes("game", {level: level})
     })
 
     const exitButtonBG = add([
