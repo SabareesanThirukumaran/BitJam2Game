@@ -70,7 +70,6 @@ function transitionScenes(sceneTo, parameters, duration=0.5){
 scene("mainMenu", () => {
     const baseWidth = 320;
     const baseHeight = 180;
-
     const mainScaleFactor = Math.floor(Math.min(width() / baseWidth, height() / baseHeight));
 
     add([
@@ -136,7 +135,7 @@ scene("levelSelect", () => {
     ])
 
     onClick("tutorial", () => {
-        go("game", {level: tutorial})
+        transitionScenes("game", {level: tutorial})
     })
 })
 
@@ -181,7 +180,7 @@ scene("game", ({level}) => {
     let grassOverlapCount = 0;
     let weedOverlapCount = 0;
 
-    let totalTime = 20;
+    let totalTime = 18;
     let timeLeft = totalTime;
     let catalystShown = 0;
 
@@ -803,6 +802,10 @@ scene("game", ({level}) => {
                     }
                 }
             }
+
+            if (player.pos.x == 2968){
+                transitionScenes("levelSelect", {})
+            }
         }
 
         if (form == "flower" && placingPad && previewPad) {
@@ -862,6 +865,10 @@ scene("game", ({level}) => {
                 removing = false;
                 allowMovement = true;
             }
+        }
+
+        if (actualHealth <= 0.1){
+            transitionScenes("deathPage", {})
         }
 
     })
@@ -943,7 +950,7 @@ scene("game", ({level}) => {
         allBars.forEach(b => {b.use(color(67, 19, 8))})
         collectibles.forEach(c => {c.use(color(67, 19, 8))})
 
-        let rebuildTime = 10;
+        let rebuildTime = 6;
         let elapsedTime = 0;
         let rebuilded = true;
 
@@ -972,6 +979,79 @@ scene("game", ({level}) => {
 
         })
     }
+})
+
+scene("deathPage", () => {
+    add([
+        text("You Died", {size:Math.max(10, Math.floor(width() / 15)), font:"pixeled"}),
+        pos(width() / 2, height() / 4),
+        color(255, 30, 30),
+        anchor("center")
+    ])
+
+    const restartButtonBG = add([
+        rect(400, 100),
+        pos(width() / 2, height() / 2.25),
+        anchor("center"),
+        color(255, 30, 30),
+        outline(10),
+        area(),
+        "restartButton"
+    ])
+
+    const restartButton = add([
+        text("Restart", {size:Math.max(10, Math.floor(width() / 40)), font:"pixeled"}),
+        pos(width()/2, height()/2.25),
+        anchor("center"),
+        color(0, 0, 0),
+        z(2),
+        area(),
+        "restartButton"
+    ])
+
+    onHover("restartButton", () => {
+        setCursor("pointer")
+    })
+
+    onHoverEnd("restartButton", () => [
+        setCursor("default")
+    ])
+
+    onClick("restartButton", () => {
+        transitionScenes("game", {level: tutorial})
+    })
+
+    const exitButtonBG = add([
+        rect(400, 100),
+        pos(width() / 2, height() / 1.75),
+        anchor("center"),
+        color(255, 30, 30),
+        outline(10),
+        area(),
+        "exitButton"
+    ])
+
+    const exitButton = add([
+        text("Exit", {size:Math.max(10, Math.floor(width() / 40)), font:"pixeled"}),
+        pos(width()/2, height()/1.75),
+        anchor("center"),
+        color(0, 0, 0),
+        z(2),
+        area(),
+        "exitButton"
+    ])
+
+    onHover("exitButton", () => {
+        setCursor("pointer")
+    })
+
+    onHoverEnd("exitButton", () => [
+        setCursor("default")
+    ])
+
+    onClick("exitButton", () => {
+        transitionScenes("mainMenu", {})
+    })
 })
 
 go("mainMenu")
