@@ -37,7 +37,7 @@ loadSprite("flower", "assets/images/FlowerSprite.png");
 loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
 loadSprite("mainMenuBG", "assets/images/MainMenuBackground.png");
-loadSprite("gameBG", "assets/images/gameBackground.png");
+loadSprite("gameBG", "assets/images/background.png");
 
 loadFont("bubbly", "assets/fonts/ChelaOne-Regular.ttf");
 loadFont("modern", "assets/fonts/Gruppo-Regular.ttf");
@@ -59,24 +59,26 @@ loadSound("grass", "assets/sounds/grass.wav");
 const mainColour = [67, 160, 71];
 const fixedDt = 1 / 60;
 const GROUND_TOP = height() - 192; 
+let allSprites = [];
 import tutorial from "./levels/tutorial.js"
 import level1 from "./levels/level1.js"
 import level2 from "./levels/level2.js"
 
 function addRepeatingBackground(spriteName) {
-    const tileSize = 1526  // size of your background image (width/height in px)
+    const tileSize = 320
     const cols = Math.ceil(3008 / tileSize) + 1
     const rows = Math.ceil(height() / tileSize) + 1
 
     for (let x = 0; x < cols; x++) {
         for (let y = 0; y < rows; y++) {
-            add([
+            let bgSprite = add([
                 sprite(spriteName),
                 pos(x * tileSize, y * tileSize),
                 fixed(),
                 z(-1),
                 "bgTile",
             ])
+            allSprites.push(bgSprite);
         }
     }
 }
@@ -375,6 +377,7 @@ scene("levelSelect", () => {
 })
 
 scene("game", ({level, catalystMax}) => {
+    addRepeatingBackground("gameBG")
     // CONFIGURING VARIABLES
     const levelWidth = 3008;
     let scaleFactor = 4;
@@ -481,7 +484,6 @@ scene("game", ({level, catalystMax}) => {
 
         "player"
     ]);
-    let allSprites = [];
     let allTexts = [];
     let allBars = [];
     let current = "normal";
