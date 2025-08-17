@@ -38,10 +38,27 @@ loadSprite("ground", "assets/images/PlatformBSprite.png");
 loadSprite("topGround", "assets/images/PlatformTSprite.png");
 loadSprite("mainMenuBG", "assets/images/MainMenuBackground.png");
 loadSprite("gameBG", "assets/images/gameBackground.png");
+
+loadFont("bubbly", "assets/fonts/ChelaOne-Regular.ttf");
+loadFont("modern", "assets/fonts/Gruppo-Regular.ttf");
 loadFont("pixeled", "assets/fonts/PressStart2P-Regular.ttf");
 
-loadSprite("spikeRed", "assets/images/Spike_RedSprite.png");
+loadSound("walk", "assets/sounds/LeafMoving.mp3");
+loadSound("jump", "assets/sounds/jump.wav");
+loadSound("pickup", "assets/sounds/pickupSeed.wav");
+loadSound("hit", "assets/sounds/hitHurt.wav");
+loadSound("flash", "assets/sounds/flask.wav");
+loadSound("catalyst", "assets/sounds/catalyst.wav");
+loadSound("power", "assets/sounds/powerUp.wav");
+loadSound("finish", "assets/sounds/finish.wav")
+loadSound("dead", "assets/sounds/dead.wav");
+loadSound("spawn", "assets/sounds/jumpSpawn.wav");
+loadSound("click", "assets/sounds/click.wav");
+loadSound("grass", "assets/sounds/grass.wav");
+
 const mainColour = [67, 160, 71];
+const fixedDt = 1 / 60;
+const GROUND_TOP = height() - 192; 
 import tutorial from "./levels/tutorial.js"
 import level1 from "./levels/level1.js"
 import level2 from "./levels/level2.js"
@@ -88,6 +105,68 @@ function transitionScenes(sceneTo, parameters, duration=0.5){
         })
 }
 
+scene("startPage", () => {
+    const firstText1 = add([
+        text("game made for", {font: "pixeled"}),
+        pos(width() / 2 - 120, height() / 2),
+        anchor("center"),
+        color(255, 255, 255),
+        opacity(1),
+    ])
+
+    const firstText2 = add([
+        text("BitJam2", {font: "bubbly", size: 80}),
+        pos(width() / 2 + 280, height() / 2),
+        anchor("center"),
+        color(255, 255, 255),
+        opacity(1),
+    ])
+
+    wait(1, () => {
+        firstText1.onUpdate(() => {
+            if (firstText1.opacity > 0) firstText1.opacity -= fixedDt;
+        })
+        firstText2.onUpdate(() => {
+            if (firstText2.opacity > 0) firstText2.opacity -= fixedDt;
+        })
+    })
+
+    wait(2.25, () => {
+        const secondText1 = add([
+            text("game made by", {font: "pixeled"}),
+            pos(width() / 2 - 120, height() / 2),
+            anchor("center"),
+            color(255, 255, 255),
+            opacity(0)
+        ])
+
+        const secondText2 = add([
+            text("Sabiryani", {font: "bubbly", size: 80}),
+            pos(width() / 2 + 280, height() / 2),
+            anchor("center"),
+            color(255, 255, 255),
+            opacity(0)
+        ])
+
+        secondText1.onUpdate(() => {
+            if (secondText1.opacity < 1) secondText1.opacity += fixedDt;
+        })
+        secondText2.onUpdate(() => {
+            if (secondText2.opacity < 1) secondText2.opacity += fixedDt;
+        })
+    })
+
+    const credits = add([
+        text("Made using : GPT-5o (Art Inspiration), Piskelapp (Sprite Drawing), KAPLAY.js (Code), jsfxr (Sound Creation)", {font:"modern", size: 30}),
+        pos(width() / 2, height() - 20),
+        anchor("center")
+    ])
+
+    wait(4, () => {
+        transitionScenes("mainMenu", {})
+    })
+})
+
 scene("mainMenu", () => {
     const baseWidth = 320;
     const baseHeight = 180;
@@ -115,17 +194,82 @@ scene("mainMenu", () => {
     ])
 
     onKeyPress("enter", () => {
+        play("click", {volume : 0.4})
         transitionScenes("levelSelect", {})
     })
 })
 
 scene("levelSelect", () => {
-    add([
+    let allLevelUI = [];
+    let helpText = add([
+        text("Need Help ? (Click here)", {font: "pixeled", size: 20}),
+        pos(width() / 2, height() * 0.01),
+        anchor("center"),
+        color(mainColour),
+        area(),
+        "helpPage"
+    ])
+    allLevelUI.push(helpText)
+
+    onHover("helpPage", () => {setCursor("pointer")})
+    onHoverEnd("helpPage", () => {setCursor("normal")})
+    onClick("helpPage", () => {
+        play("click", {volume: 0.4});
+        allLevelUI.forEach((uiElement) => {uiElement.opacity = 0.3})
+        const helpBox = add([
+            rect(width() * 0.7, height() * 0.6, { radius: 16 }),
+            pos(width() / 2, height() / 2),
+            anchor("center"),
+            color(mainColour),
+            outline(6, mainColour),
+            z(100),
+            opacity(1),
+            "helpBox"
+        ]);
+
+        const helpTextInside = add([
+            text("W - Jump\nA - Left\nD - Right\nE - Switch to flower mode (Only during non casualty time)\nSpace (Spacebar) - Press during flower mode when jump-pad blinks green to place jump-pad\nReach and touch the end to continue to the next level\nYou only have 3 lives", {
+                font: "pixeled",
+                size: 28,
+                width: width() * 0.65,
+            }),
+            pos(width() / 2, height() / 2),
+            anchor("center"),
+            color(0, 0, 0),
+            z(101),
+            opacity(1),
+            "helpBox"
+        ]);
+
+        const exitBack = add([
+            circle(25),
+            pos(helpBox.pos.x + helpBox.width / 2 - 30, helpBox.pos.y - helpBox.height / 2 + 30),
+            color(0, 0, 0),
+            area(),
+            z(102),
+            "exitHelp"
+        ])
+
+        add([
+            text("X", {font: "pixeled", size: 24}),
+            pos(exitBack.pos.x, exitBack.pos.y),
+            anchor("center"),
+            color(mainColour),
+            area(),
+            z(103),
+            "exitHelp"
+        ])
+
+        onClick("exitHelp", () => {play("click", {volume: 0.4});destroyAll("exitHelp");destroyAll("helpBox");allLevelUI.forEach((ui) => ui.opacity = 1);})
+    })
+
+    let levelText = add([
         text("Select a Level", {size: 55, font: "pixeled"}),
         pos(width()/2, height()/5),
         anchor("center"),
         color(mainColour)
     ])
+    allLevelUI.push(levelText)
 
     // Tutorial Level
     const tutorialButtonBG = add([
@@ -148,17 +292,9 @@ scene("levelSelect", () => {
         "tutorial"
     ])
 
-    onHover("tutorial", () => {
-        setCursor("pointer")
-    })
-
-    onHoverEnd("tutorial", () => [
-        setCursor("default")
-    ])
-
-    onClick("tutorial", () => {
-        transitionScenes("game", {level: tutorial, catalystMax:0})
-    })
+    onHover("tutorial", () => {setCursor("pointer")})
+    onHoverEnd("tutorial", () => [setCursor("default")])
+    onClick("tutorial", () => {play("click", {volume : 0.4}); transitionScenes("game", {level: tutorial, catalystMax:0})})
 
     //Level 1
     const levelOneBG = add([
@@ -181,17 +317,9 @@ scene("levelSelect", () => {
         "levelOne"
     ])
 
-    onHover("levelOne", () => {
-        setCursor("pointer")
-    })
-
-    onHoverEnd("levelOne", () => [
-        setCursor("default")
-    ])
-
-    onClick("levelOne", () => {
-        transitionScenes("game", {level: level1, catalystMax: 0})
-    })
+    onHover("levelOne", () => {setCursor("pointer")})
+    onHoverEnd("levelOne", () => [setCursor("default")])
+    onClick("levelOne", () => {play("click", {volume : 0.4});transitionScenes("game", {level: level1, catalystMax: 0})})
 
     //Level 2
     const levelTwoBG = add([
@@ -214,17 +342,9 @@ scene("levelSelect", () => {
         "levelTwo"
     ])
 
-    onHover("levelTwo", () => {
-        setCursor("pointer")
-    })
-
-    onHoverEnd("levelTwo", () => [
-        setCursor("default")
-    ])
-
-    onClick("levelTwo", () => {
-        transitionScenes("game", {level: level2, catalystMax: 1})
-    })
+    onHover("levelTwo", () => {setCursor("pointer")})
+    onHoverEnd("levelTwo", () => [setCursor("default")])
+    onClick("levelTwo", () => {play("click", {volume : 0.4});transitionScenes("game", {level: level2, catalystMax: 1})})
 
     //Level 2
     const comingBG = add([
@@ -247,13 +367,10 @@ scene("levelSelect", () => {
         "coming"
     ])
 
-    onHover("coming", () => {
-        setCursor("pointer")
-    })
+    onHover("coming", () => {setCursor("pointer")})
+    onHoverEnd("coming", () => [setCursor("default")])
 
-    onHoverEnd("coming", () => [
-        setCursor("default")
-    ])
+    allLevelUI.push(tutorialButtonBG, tutorialButton, levelOneBG, levelOneButton, levelTwoBG, levelTwoButton, comingBG, comingButton)
 
 })
 
@@ -268,12 +385,14 @@ scene("game", ({level, catalystMax}) => {
     let playerState = "idle";
     let previousPosX = 0;
     let previousPosY  = 0;
+    let walkingSound;
+    let levelEnded = false;
+    let playerDead = false;
 
     let starsCollected = 0;
     let shownMessage = false;
 
     let onAnyPlatform = false;
-    const fixedDt = 1 / 60
     const visibleWidth = width() / 2;
 
     let cells = [];
@@ -298,7 +417,7 @@ scene("game", ({level, catalystMax}) => {
     let grassOverlapCount = 0;
     let weedOverlapCount = 0;
 
-    let totalTime = 13;
+    let totalTime = 10;
     let timeLeft = totalTime;
     let catalystShown = 0;
 
@@ -342,11 +461,10 @@ scene("game", ({level, catalystMax}) => {
     let returnAnchor = null;
 
     const TILE = 32;
-    const GROUND_TOP = height() - 192; 
     const tileTopY = (row) => GROUND_TOP - row * TILE;
     const colliderGrids = { grass: {}, spike: {}, weed: {} };
     const starText = add([
-        text("Number of Stars Collected = 0/3", {size:(Math.max(10, Math.floor(width() / 95))), font:"pixeled"}),
+        text("Number of Seeds Collected = 0/3", {size:(Math.max(10, Math.floor(width() / 95))), font:"pixeled"}),
         pos(textMarginRight, height() * 0.05),
         color(mainColour),
         fixed(),
@@ -617,6 +735,7 @@ scene("game", ({level, catalystMax}) => {
     }
 
     function launchOrbArc(startPos, targetPos) {
+        play("spawn", {volume: 0.3})
         flashWhite();
         const orb = add([
             sprite("orbAnim"),
@@ -773,12 +892,12 @@ scene("game", ({level, catalystMax}) => {
         }
     }
 
-    player.onCollide("star", (star) => {starsCollected += 1;starText.text = `Number of Stars Collected = ${starsCollected}/3`; destroy(star);})
-    player.onCollide("grass", () => {grassOverlapCount++; actualStealth = 1;})
-    player.onCollide("weed", () => {weedOverlapCount++; playerSpeed=100; actualHealth -= (Math.random() * 0.1)})
+    player.onCollide("star", (star) => {starsCollected += 1;starText.text = `Number of Seeds Collected = ${starsCollected}/3`; destroy(star); play("pickup", {volume: 0.3})})
+    player.onCollide("grass", () => {grassOverlapCount++; actualStealth = 1; play("grass", {volume: 0.1})})
+    player.onCollide("weed", () => {weedOverlapCount++; playerSpeed=100; actualHealth -= (Math.random() * 0.2); play("hit", {volume: 0.3})})
     player.onCollideEnd("grass", () => {grassOverlapCount = Math.max(0, grassOverlapCount - 1); if(grassOverlapCount === 0) {actualStealth = 0;}})
     player.onCollideEnd("weed", () => {weedOverlapCount = Math.max(0, weedOverlapCount-1); if(weedOverlapCount === 0){playerSpeed=200;}})
-    player.onCollide("spike", () => {actualHealth -= (1/3);})
+    player.onCollide("spike", () => {actualHealth -= (1/3); play("hit", {volume: 0.3})})
     player.onCollide("jumpPad", (pad) => {
         player.pos.y = pad.pos.y - playerHeight;
         player.velocity.y = -jumpAmount * 1.5;
@@ -893,11 +1012,20 @@ scene("game", ({level, catalystMax}) => {
                 player.use(sprite("leaf"));
                 player.play("idle");
                 playerState = "idle";
+
+                if (walkingSound){
+                    walkingSound.stop();
+                    walkingSound = null;
+                }
             } 
 
             if (!(player.velocity.x === 0 && onAnyPlatform) && playerState !== "moving"){
                 player.use(sprite("movingLeaf"));
                 playerState = "moving"
+
+                if (!walkingSound){
+                    walkingSound = play("walk", {loop: true, volume: 0.1})
+                }
             }
 
             const barSpeed = 3;
@@ -922,7 +1050,9 @@ scene("game", ({level, catalystMax}) => {
                 }
             }
 
-            if (player.pos.x == 2968){
+            if (!levelEnded && player.pos.x == 2968){
+                levelEnded = true;
+                play("finish", {volume: 0.5})
                 transitionScenes("levelSelect", {})
             }
         }
@@ -971,7 +1101,9 @@ scene("game", ({level, catalystMax}) => {
             }
         }
 
-        if (actualHealth <= 0.1){
+        if (actualHealth <= 0.1 && !playerDead){
+            playerDead = true;
+            play("dead", {volume : 0.3})
             transitionScenes("deathPage", {level: level})
         }
 
@@ -981,21 +1113,22 @@ scene("game", ({level, catalystMax}) => {
     onKeyDown("d", () => { if (allowMovement) {player.velocity.x = playerSpeed;} })
     onKeyRelease("a", () => { if (allowMovement) {if (player.velocity.x < 0) player.velocity.x = 0;}})
     onKeyRelease("d", () => { if (allowMovement) {if (player.velocity.x > 0) player.velocity.x = 0;} })
-    onKeyPress("w" , () => { if (allowMovement) { if (onAnyPlatform) { player.velocity.y = -jumpAmount; }}})
+    onKeyPress("w" , () => { if (allowMovement) { if (onAnyPlatform) { player.velocity.y = -jumpAmount; play("jump", {volume: 0.3})}}})
     onKeyPress("e", () => {
         if (starsCollected == 3 && current == "normal"){
+            play("power", {volume: 0.3})
             starsCollected = 0;
             if (removing){return;}
             recreateOverlay()
             removing = true;
             waveY = 0;
             switchForm();
-            starText.text = "Number of Stars Collected = 0/3"
+            starText.text = "Number of Seeds Collected = 0/3"
         }
         else {  
             if (current == "normal"){
                 const notEnough = add([
-                    text("Not enough stars collected !", {size: 8, font: "pixeled"}),
+                    text("Not enough Seeds collected !", {size: 8, font: "pixeled"}),
                     color(mainColour),
                     pos(player.pos.x, player.pos.y-100),
                     "notEnough"
@@ -1048,6 +1181,7 @@ scene("game", ({level, catalystMax}) => {
     })
 
     function catalystTime() {
+        play("flash", {volume: 0.2})
         flashWhite()
         allSprites.forEach(s => {s.use(color(255, 30, 30))})
         allTexts.forEach(t => {t.use(color(67, 19, 8))})
@@ -1058,10 +1192,11 @@ scene("game", ({level, catalystMax}) => {
             timeLeft = totalTime;
         }
 
-        let rebuildTime = 6;
+        let rebuildTime = 4;
         let elapsedTime = 0;
         let rebuilded = true;
 
+        play("catalyst", {volume: 0.1})
         catalystBarInner.onUpdate(() => {
             if (!rebuilded) return;
 
@@ -1072,7 +1207,7 @@ scene("game", ({level, catalystMax}) => {
                 
                 let damageProb = actualStealth
                 if (damageProb < 1 && actualHealth > 0){
-                    actualHealth -= Math.random() * 0.002
+                    actualHealth -= Math.random() * 0.0045
                 }
             } else {
                 rebuilded = false
@@ -1126,6 +1261,7 @@ scene("deathPage", ({level}) => {
     ])
 
     onClick("restartButton", () => {
+        play("click", {volume : 0.4})
         transitionScenes("game", {level: level})
     })
 
@@ -1158,8 +1294,9 @@ scene("deathPage", ({level}) => {
     ])
 
     onClick("exitButton", () => {
+        play("click", {volume : 0.4})
         transitionScenes("mainMenu", {})
     })
 })
 
-go("mainMenu")
+go("startPage")
