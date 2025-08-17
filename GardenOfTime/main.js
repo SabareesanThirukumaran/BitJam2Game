@@ -59,7 +59,7 @@ loadSound("grass", "assets/sounds/grass.wav");
 const mainColour = [67, 160, 71];
 const fixedDt = 1 / 60;
 const GROUND_TOP = height() - 192; 
-let allSprites = [];
+let allSprites = []; 
 import tutorial from "./levels/tutorial.js"
 import level1 from "./levels/level1.js"
 import level2 from "./levels/level2.js"
